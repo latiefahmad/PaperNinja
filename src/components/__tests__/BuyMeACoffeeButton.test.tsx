@@ -17,6 +17,6 @@ describe('BuyMeACoffeeButton', () => {
   it('BMC-02: clicking opens the Buy Me a Coffee URL', () => {
     render(<BuyMeACoffeeButton />);
     fireEvent.click(screen.getByRole('button', { name: /buy me a coffee/i }));
-    expect(openUrl).toHaveBeenCalledWith('https://buymeacoffee.com/shyhunter');
+    expect(openUrl).toHaveBeenCalledWith('https://buymeacoffee.com/latiefahmad');
   });
 });

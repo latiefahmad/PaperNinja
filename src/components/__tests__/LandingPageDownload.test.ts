@@ -43,7 +43,7 @@ const version = (
 ).version;
 
 const asset = (suffix: string) =>
-  `https://github.com/shyhunter/PaperNinja/releases/download/v${version}/PaperNinja_${version}_${suffix}`;
+  `https://github.com/latiefahmad/PaperNinja/releases/download/v${version}/PaperNinja_${version}_${suffix}`;
 
 interface Rendered {
   /** The hero button. */

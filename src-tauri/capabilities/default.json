@@ -47,8 +47,8 @@
     {
       "identifier": "http:default",
       "allow": [
-        { "url": "https://api.github.com/repos/shyhunter/PaperNinja/releases/latest" },
-        { "url": "https://raw.githubusercontent.com/shyhunter/PaperNinja/main/feedback-config.json" }
+        { "url": "https://api.github.com/repos/latiefahmad/PaperNinja/releases/latest" },
+        { "url": "https://raw.githubusercontent.com/latiefahmad/PaperNinja/main/feedback-config.json" }
       ]
     }
   ]

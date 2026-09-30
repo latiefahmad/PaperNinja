@@ -2,9 +2,9 @@ import { Coffee } from 'lucide-react';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { t } from '@/i18n';
 
-const BMC_URL = 'https://buymeacoffee.com/shyhunter';
+const BMC_URL = 'https://buymeacoffee.com/latiefahmad';
 
-// Colors match the official Buy Me a Coffee button widget (buymeacoffee.com/shyhunter)
+// Colors match the official Buy Me a Coffee button widget (buymeacoffee.com/latiefahmad)
 // so the native button reads as the same brand element without loading their remote
 // <script> widget, which would add an external network call and break the app's CSP.
 export function BuyMeACoffeeButton() {

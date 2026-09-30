@@ -22,7 +22,7 @@ const { JSDOM } = createRequire(import.meta.url)('jsdom') as { JSDOM: JsdomCtor 
 
 const doc = new JSDOM(readFileSync('site/index.html', 'utf-8')).window.document;
 const head = doc.head;
-const SITE = 'https://shyhunter.github.io/PaperNinja/';
+const SITE = 'https://latiefahmad.github.io/PaperNinja/';
 
 const meta = (sel: string) => head.querySelector(sel)?.getAttribute('content') ?? '';
 

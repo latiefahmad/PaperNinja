@@ -1,9 +1,9 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
-Upstream-Name: PaperOtter
-Source: https://github.com/shyhunter/PaperOtter
+Upstream-Name: PaperNinja
+Source: https://github.com/latiefahmad/PaperNinja
 
 Files: *
-Copyright: 2026 PaperOtter Contributors
+Copyright: 2026 PaperNinja Contributors
 License: MIT
 
 License: MIT

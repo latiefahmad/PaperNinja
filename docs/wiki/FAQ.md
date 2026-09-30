@@ -6,7 +6,7 @@ No. All processing happens locally using native code (qpdf,
 LibreOffice, Calibre), and in-app libraries (pdf-lib, pdfjs, mammoth, and
 the Rust `image` crate).
 Your files never leave your machine: see the
-[Privacy section](https://github.com/shyhunter/PaperNinja#privacy) of the
+[Privacy section](https://github.com/latiefahmad/PaperNinja#privacy) of the
 README for the full statement.
 
 ### Does PaperNinja need an internet connection?
@@ -65,14 +65,14 @@ optional, only needed for DOC/ODT/RTF and EPUB/MOBI conversion respectively
 
 Yes, it's open source under the MIT license. If it's useful to you, there's
 an optional way to
-[support development](https://buymeacoffee.com/shyhunter).
+[support development](https://buymeacoffee.com/latiefahmad).
 
 ### How do I report a bug or suggest a feature?
 
 Bugs go to the
-[issue tracker](https://github.com/shyhunter/PaperNinja/issues/new/choose). Feature
+[issue tracker](https://github.com/latiefahmad/PaperNinja/issues/new/choose). Feature
 ideas go to
-[Discussions](https://github.com/shyhunter/PaperNinja/discussions/new?category=ideas),
+[Discussions](https://github.com/latiefahmad/PaperNinja/discussions/new?category=ideas),
 where they can be talked through before anyone commits to building them.
 
 ---
@@ -97,6 +97,6 @@ warning you half-understand is more dangerous than one in a language you do not
 speak at all.
 
 If something reads oddly, says the wrong thing, or is missing, please
-[open an issue](https://github.com/shyhunter/PaperNinja/issues). Corrections from
+[open an issue](https://github.com/latiefahmad/PaperNinja/issues). Corrections from
 native speakers are genuinely the most useful thing anyone can send this project.
 

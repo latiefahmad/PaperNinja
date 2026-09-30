@@ -1,4 +1,4 @@
-const RELEASES_URL = 'https://api.github.com/repos/shyhunter/PaperNinja/releases/latest';
+const RELEASES_URL = 'https://api.github.com/repos/latiefahmad/PaperNinja/releases/latest';
 
 export interface LatestRelease {
   version: string;

@@ -1,10 +1,10 @@
 const FEEDBACK_CONFIG_URL =
-  'https://raw.githubusercontent.com/shyhunter/PaperNinja/main/feedback-config.json';
+  'https://raw.githubusercontent.com/latiefahmad/PaperNinja/main/feedback-config.json';
 
 /** Baked in at build time as a fallback only -- the authoritative destination
  * lives in feedback-config.json on the main branch, so it can be changed
  * without shipping a new release. */
-export const FALLBACK_FEEDBACK_URL = 'https://github.com/shyhunter/PaperNinja/discussions';
+export const FALLBACK_FEEDBACK_URL = 'https://github.com/latiefahmad/PaperNinja/discussions';
 
 /**
  * Only github.com over https is accepted. The config file is fetched from the

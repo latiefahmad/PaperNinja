@@ -2,9 +2,9 @@
 name = "tauri-app"
 version = "1.0.1"
 description = "Compress, convert and edit PDFs, images and documents on your own machine."
-authors = ["shyhunter <shyhunter@users.noreply.github.com>"]
-homepage = "https://github.com/shyhunter/PaperNinja"
-repository = "https://github.com/shyhunter/PaperNinja"
+authors = ["latiefahmad <latiefahmad@users.noreply.github.com>"]
+homepage = "https://github.com/latiefahmad/PaperNinja"
+repository = "https://github.com/latiefahmad/PaperNinja"
 license = "MIT"
 edition = "2021"
 default-run = "tauri-app"

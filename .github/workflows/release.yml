@@ -5,6 +5,11 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version, without the v prefix (e.g. 1.0.2)'
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -12,8 +17,39 @@ permissions:
   discussions: write
 
 jobs:
+  # Resolve the version once, from the tag or the manual input, and validate
+  # it before anything builds. Manual runs carry a branch ref, not a tag, so
+  # every later "derive version from tag" step reads these outputs instead.
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+      is_prerelease: ${{ steps.version.outputs.is_prerelease }}
+    steps:
+      - id: version
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ inputs.version }}"
+          else
+            VERSION="${GITHUB_REF_NAME#v}"
+          fi
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]] || {
+            echo "Invalid version: $VERSION (want 1.2.3 or 1.2.3-beta.1, no v prefix on manual runs)"; exit 1;
+          }
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+          if [[ "$VERSION" == *-* ]]; then
+            echo "is_prerelease=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_prerelease=false" >> "$GITHUB_OUTPUT"
+          fi
+          echo "Release version: $VERSION (tag v$VERSION)"
+
   # Gate: all tests must pass before building release artifacts
   test-gate:
+    needs: prepare
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout
@@ -44,7 +80,7 @@ jobs:
       - name: Version consistency check (tag vs source)
         run: npm run version:check
         env:
-          GITHUB_REF_NAME: ${{ github.ref_name }}
+          GITHUB_REF_NAME: ${{ needs.prepare.outputs.tag }}
 
       - name: TypeScript type check
         run: npx tsc --noEmit
@@ -59,7 +95,7 @@ jobs:
         run: cd src-tauri && cargo clippy -- -D warnings
 
   build:
-    needs: test-gate
+    needs: [prepare, test-gate]
     strategy:
       fail-fast: false
       matrix:
@@ -126,25 +162,13 @@ jobs:
           echo "f30140a43a0a59e46db21bdefdf749b9e9f2c6946e92afabbacf98b8ae73fb4f  $TOOLS/AppRun-x86_64" | sha256sum -c -
           chmod 0755 "$TOOLS/AppRun-x86_64"
 
-      - name: Derive version from tag
-        id: version
-        shell: bash
-        run: |
-          VERSION="${GITHUB_REF_NAME#v}"
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          if [[ "$VERSION" == *-* ]]; then
-            echo "is_prerelease=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "is_prerelease=false" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@1deb371b0cd8bd54025b384f1cd735e725c4060f # v1.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: 'PaperNinja ${{ github.ref_name }}'
+          tagName: ${{ needs.prepare.outputs.tag }}
+          releaseName: 'PaperNinja ${{ needs.prepare.outputs.tag }}'
           releaseBody: |
             ## Install PaperNinja
 
@@ -152,11 +176,11 @@ jobs:
 
             | Platform | Installer | Download |
             |----------|-----------|----------|
-            | **Mac (M1/M2/M3/M4)** | .dmg | [Download](https://github.com/shyhunter/PaperNinja/releases/download/${{ github.ref_name }}/PaperNinja_${{ steps.version.outputs.version }}_aarch64.dmg) |
-            | **Mac (Intel)** | .dmg | [Download](https://github.com/shyhunter/PaperNinja/releases/download/${{ github.ref_name }}/PaperNinja_${{ steps.version.outputs.version }}_x64.dmg) |
-            | **Windows** | .exe | [Download](https://github.com/shyhunter/PaperNinja/releases/download/${{ github.ref_name }}/PaperNinja_${{ steps.version.outputs.version }}_x64-setup.exe) |
-            | **Linux (AppImage)** | .AppImage | [Download](https://github.com/shyhunter/PaperNinja/releases/download/${{ github.ref_name }}/PaperNinja_${{ steps.version.outputs.version }}_amd64.AppImage) |
-            | **Linux (Debian/Ubuntu)** | .deb | [Download](https://github.com/shyhunter/PaperNinja/releases/download/${{ github.ref_name }}/PaperNinja_${{ steps.version.outputs.version }}_amd64.deb) |
+            | **Mac (M1/M2/M3/M4)** | .dmg | [Download](https://github.com/shyhunter/PaperNinja/releases/download/${{ needs.prepare.outputs.tag }}/PaperNinja_${{ needs.prepare.outputs.version }}_aarch64.dmg) |
+            | **Mac (Intel)** | .dmg | [Download](https://github.com/shyhunter/PaperNinja/releases/download/${{ needs.prepare.outputs.tag }}/PaperNinja_${{ needs.prepare.outputs.version }}_x64.dmg) |
+            | **Windows** | .exe | [Download](https://github.com/shyhunter/PaperNinja/releases/download/${{ needs.prepare.outputs.tag }}/PaperNinja_${{ needs.prepare.outputs.version }}_x64-setup.exe) |
+            | **Linux (AppImage)** | .AppImage | [Download](https://github.com/shyhunter/PaperNinja/releases/download/${{ needs.prepare.outputs.tag }}/PaperNinja_${{ needs.prepare.outputs.version }}_amd64.AppImage) |
+            | **Linux (Debian/Ubuntu)** | .deb | [Download](https://github.com/shyhunter/PaperNinja/releases/download/${{ needs.prepare.outputs.tag }}/PaperNinja_${{ needs.prepare.outputs.version }}_amd64.deb) |
 
             Everything you need is included: just install and go.
 
@@ -181,7 +205,7 @@ jobs:
             >
             > ```
             > cd ~/Downloads
-            > sudo apt install ./PaperNinja_${{ steps.version.outputs.version }}_amd64.deb
+            > sudo apt install ./PaperNinja_${{ needs.prepare.outputs.version }}_amd64.deb
             > ```
             >
             > Updating from an older PaperNinja is the same command: apt replaces the old version and your settings stay. Double-clicking the file opens Ubuntu's App Center instead, which labels every `.deb` from outside Ubuntu's own store _"potentially unsafe"_ and, when an older PaperNinja is already installed, only shows **Installed** and does nothing. `dpkg -s paper-ninja | grep Version` shows which version you have.
@@ -213,12 +237,12 @@ jobs:
             The **Assets** section below is GitHub's automatic list of the same installer files from the table above. You don't need to use it: the download links in the table are the same files. The `Source code` entries are the raw project code and are only useful for developers.
             </details>
           releaseDraft: true
-          prerelease: ${{ steps.version.outputs.is_prerelease }}
+          prerelease: ${{ needs.prepare.outputs.is_prerelease }}
           args: --target ${{ matrix.target }}
 
   # ── Smoke tests: verify each platform artifact launches before publishing ──
   smoke-test:
-    needs: build
+    needs: [prepare, build]
     strategy:
       fail-fast: false
       matrix:
@@ -244,7 +268,7 @@ jobs:
         id: asset
         shell: bash
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION="${{ needs.prepare.outputs.version }}"
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           ASSET=$(echo "${{ matrix.asset }}" | sed "s/{version}/$VERSION/g")
           echo "filename=${ASSET}" >> "$GITHUB_OUTPUT"
@@ -253,19 +277,20 @@ jobs:
       - name: Download release artifact
         shell: bash
         run: |
-          if ! gh release view "$GITHUB_REF_NAME" --repo "${{ github.repository }}" --json assets -q ".assets[].name" 2>/dev/null | grep -q "${{ steps.asset.outputs.filename }}"; then
-            echo "FAIL: Asset ${{ steps.asset.outputs.filename }} not found in release $GITHUB_REF_NAME"
+          if ! gh release view "$RELEASE_TAG" --repo "${{ github.repository }}" --json assets -q ".assets[].name" 2>/dev/null | grep -q "${{ steps.asset.outputs.filename }}"; then
+            echo "FAIL: Asset ${{ steps.asset.outputs.filename }} not found in release $RELEASE_TAG"
             echo "Available assets:"
-            gh release view "$GITHUB_REF_NAME" --repo "${{ github.repository }}" --json assets -q ".assets[].name" 2>/dev/null || echo "(release not found)"
+            gh release view "$RELEASE_TAG" --repo "${{ github.repository }}" --json assets -q ".assets[].name" 2>/dev/null || echo "(release not found)"
             exit 1
           fi
-          gh release download "$GITHUB_REF_NAME" \
+          gh release download "$RELEASE_TAG" \
             --repo "${{ github.repository }}" \
             --pattern "${{ steps.asset.outputs.filename }}" \
             --dir .
           ls -la "${{ steps.asset.outputs.filename }}"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
 
       # ── macOS (.dmg) ──
       - name: "macOS: Mount DMG, verify app launches, check version"
@@ -442,8 +467,11 @@ jobs:
 
   # ── Publish: promote draft to live only after all smoke tests pass ─────────
   publish-release:
-    needs: smoke-test
+    needs: [prepare, smoke-test]
     runs-on: ubuntu-22.04
+    env:
+      RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+      RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
 
     steps:
       - name: Checkout
@@ -463,7 +491,7 @@ jobs:
         run: |
           set -euo pipefail
           work="$(mktemp -d)"
-          gh release download "$GITHUB_REF_NAME" --dir "$work"
+          gh release download "$RELEASE_TAG" --dir "$work"
           cd "$work"
           rm -f SHA256SUMS.txt
           if [ -z "$(ls -A)" ]; then
@@ -480,35 +508,35 @@ jobs:
           # upload dies with "fatal: not a git repository" after the checksums
           # have already been computed and verified. The step above this one
           # runs before the `cd` and never hit it.
-          gh release upload "$GITHUB_REF_NAME" SHA256SUMS.txt --clobber --repo "$GITHUB_REPOSITORY"
+          gh release upload "$RELEASE_TAG" SHA256SUMS.txt --clobber --repo "$GITHUB_REPOSITORY"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # What changed, above the install table. Written per release in
-      # docs/release-notes/<tag>.md; a release without one keeps the plain
-      # install notes. Never blocks a release that is otherwise ready.
+      # docs/release-notes/<tag>.md. Required: a release without notes keeps
+      # users guessing what changed, so this fails the publish instead of
+      # shipping install notes alone.
       - name: Add "What's new" to the release notes
-        continue-on-error: true
         run: |
           set -euo pipefail
-          NOTES="docs/release-notes/${GITHUB_REF_NAME}.md"
+          NOTES="docs/release-notes/${RELEASE_TAG}.md"
           if [ ! -f "$NOTES" ]; then
-            echo "no $NOTES, keeping the install notes as they are"
-            exit 0
+            echo "FAIL: no $NOTES — write the release notes first, then re-run"
+            exit 1
           fi
-          gh release view "$GITHUB_REF_NAME" --json body --jq .body > current-body.md
+          gh release view "$RELEASE_TAG" --json body --jq .body > current-body.md
           { cat "$NOTES"; echo; cat current-body.md; } > release-body.md
-          gh release edit "$GITHUB_REF_NAME" --notes-file release-body.md
+          gh release edit "$RELEASE_TAG" --notes-file release-body.md
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Promote draft to published release
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION="$RELEASE_VERSION"
           if [[ "$VERSION" == *-* ]]; then
-            gh release edit "$GITHUB_REF_NAME" --draft=false --prerelease
+            gh release edit "$RELEASE_TAG" --draft=false --prerelease
           else
-            gh release edit "$GITHUB_REF_NAME" --draft=false --prerelease=false
+            gh release edit "$RELEASE_TAG" --draft=false --prerelease=false
           fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -518,9 +546,9 @@ jobs:
       # already exist; if it does not, the release is still published and this
       # step's log says why.
       - name: Announce the release in Discussions
-        if: ${{ !contains(github.ref_name, '-') }}
+        if: ${{ needs.prepare.outputs.is_prerelease == 'false' }}
         continue-on-error: true
-        run: gh release edit "$GITHUB_REF_NAME" --discussion-category "Announcements"
+        run: gh release edit "$RELEASE_TAG" --discussion-category "Announcements"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -542,13 +570,13 @@ jobs:
         # digest by eye, which is where a wrong hash usually enters.
         run: |
           set -euo pipefail
-          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION="$RELEASE_VERSION"
           if [[ "$VERSION" == *-* ]]; then
             echo "$VERSION is a prerelease; winget takes stable releases only, skipping"
             exit 0
           fi
           mkdir -p _winget
-          gh release download "$GITHUB_REF_NAME" --pattern SHA256SUMS.txt --dir _winget
+          gh release download "$RELEASE_TAG" --pattern SHA256SUMS.txt --dir _winget
           node scripts/winget-manifests.mjs "$VERSION" _winget/SHA256SUMS.txt _winget/manifests
           rm -f _winget/SHA256SUMS.txt
         env:

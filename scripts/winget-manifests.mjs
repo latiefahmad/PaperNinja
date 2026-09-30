@@ -22,9 +22,9 @@ if (!version || !sumsPath || !outDir) {
   process.exit(2);
 }
 
-const PACKAGE_ID = 'shyhunter.PaperNinja';
+const PACKAGE_ID = 'latiefahmad.PaperNinja';
 const MANIFEST_VERSION = '1.6.0';
-const REPO = 'https://github.com/shyhunter/PaperNinja';
+const REPO = 'https://github.com/latiefahmad/PaperNinja';
 const installerName = `PaperNinja_${version}_x64-setup.exe`;
 
 const sums = readFileSync(sumsPath, 'utf8');
@@ -66,8 +66,8 @@ ManifestVersion: ${MANIFEST_VERSION}
   [`${PACKAGE_ID}.locale.en-US.yaml`]: `PackageIdentifier: ${PACKAGE_ID}
 PackageVersion: ${packageVersion}
 PackageLocale: en-US
-Publisher: shyhunter
-PublisherUrl: https://github.com/shyhunter
+Publisher: latiefahmad
+PublisherUrl: https://github.com/latiefahmad
 PackageName: PaperNinja
 PackageUrl: ${REPO}
 License: MIT

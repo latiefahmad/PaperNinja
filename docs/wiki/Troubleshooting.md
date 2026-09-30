@@ -69,7 +69,7 @@ Fixed in **v1.0.1**. In v1.0.0, one file inside the AppImage could only be run
 by the user who owned it. Started normally that is you, so it worked; started
 inside a sandbox such as firejail, which runs it as someone else, it closed
 immediately. Download the current AppImage from
-[Releases](https://github.com/shyhunter/PaperNinja/releases/latest).
+[Releases](https://github.com/latiefahmad/PaperNinja/releases/latest).
 
 ## Compress says a PDF "opens without a password, but its owner has protected it against changes"
 
@@ -94,7 +94,7 @@ Try re-exporting the source PDF and protecting it again.
 
 ## Still stuck?
 
-[Open an issue](https://github.com/shyhunter/PaperNinja/issues/new/choose) and
+[Open an issue](https://github.com/latiefahmad/PaperNinja/issues/new/choose) and
 include the exact error message. Happy to help.
 
 ---

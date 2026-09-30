@@ -16,10 +16,10 @@ describe('fetchFeedbackUrl', () => {
   it('FBC-01: returns the url from a successful response', async () => {
     vi.mocked(fetch).mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ feedbackUrl: 'https://github.com/shyhunter/Other/discussions' }),
+      json: () => Promise.resolve({ feedbackUrl: 'https://github.com/latiefahmad/Other/discussions' }),
     } as Response);
 
-    expect(await fetchFeedbackUrl()).toBe('https://github.com/shyhunter/Other/discussions');
+    expect(await fetchFeedbackUrl()).toBe('https://github.com/latiefahmad/Other/discussions');
   });
 
   it('FBC-02: falls back to the default on a non-200 response', async () => {
@@ -44,7 +44,7 @@ describe('fetchFeedbackUrl', () => {
   // become a link the app opens for the user.
   it.each([
     ['a non-github host', 'https://evil.example.com/discussions'],
-    ['plain http', 'http://github.com/shyhunter/PaperNinja/discussions'],
+    ['plain http', 'http://github.com/latiefahmad/PaperNinja/discussions'],
     ['a javascript: url', 'javascript:alert(1)'],
     ['a lookalike host', 'https://github.com.evil.example.com/x'],
     ['not a url at all', 'discussions'],

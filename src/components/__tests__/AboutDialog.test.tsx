@@ -21,7 +21,7 @@ afterEach(() => {
 
 describe('AboutDialog', () => {
   it('AD-01: Send Feedback opens a mailto link using the fetched address', async () => {
-    vi.mocked(fetchFeedbackUrl).mockResolvedValue('https://github.com/shyhunter/Other/discussions');
+    vi.mocked(fetchFeedbackUrl).mockResolvedValue('https://github.com/latiefahmad/Other/discussions');
     render(<AboutDialog open onClose={() => {}} />);
 
     const button = await screen.findByRole('button', { name: /send feedback/i });
@@ -29,7 +29,7 @@ describe('AboutDialog', () => {
     fireEvent.click(button);
 
     expect(openUrl).toHaveBeenCalledWith(
-      'https://github.com/shyhunter/Other/discussions',
+      'https://github.com/latiefahmad/Other/discussions',
     );
   });
 

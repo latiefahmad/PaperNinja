@@ -88,10 +88,10 @@ jobs:
           # that keeps a future edit from quietly reintroducing one. Only
           # outbound links the reader clicks are allowed, plus two hosts that
           # are named but never fetched: schema.org is the JSON-LD vocabulary
-          # identifier, and shyhunter.github.io is this site's own origin,
+          # identifier, and latiefahmad.github.io is this site's own origin,
           # spelled absolutely because og:image and canonical require it.
           if grep -Eo 'https?://[a-zA-Z0-9.-]+' _site/index.html \
-             | grep -vE '^https?://(github\.com|buymeacoffee\.com|www\.w3\.org|opensource\.org|schema\.org|shyhunter\.github\.io)$' \
+             | grep -vE '^https?://(github\.com|buymeacoffee\.com|www\.w3\.org|opensource\.org|schema\.org|latiefahmad\.github\.io)$' \
              | sort -u | grep .; then
             echo "third-party resource host in index.html (listed above)"; exit 1
           fi

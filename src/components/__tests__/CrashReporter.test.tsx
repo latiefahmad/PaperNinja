@@ -42,12 +42,12 @@ async function clickSend() {
 
 describe('CrashReporter', () => {
   it('CR-01: Send Crash Report opens the fetched discussion URL', async () => {
-    vi.mocked(fetchFeedbackUrl).mockResolvedValue('https://github.com/shyhunter/Other/discussions');
+    vi.mocked(fetchFeedbackUrl).mockResolvedValue('https://github.com/latiefahmad/Other/discussions');
     renderReporter();
 
     const url = await clickSend();
 
-    expect(url.startsWith('https://github.com/shyhunter/Other/discussions/new?')).toBe(true);
+    expect(url.startsWith('https://github.com/latiefahmad/Other/discussions/new?')).toBe(true);
     expect(new URL(url).searchParams.get('title')).toBe('Crash: Boom went the processor');
   });
 

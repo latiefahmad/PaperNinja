@@ -17,9 +17,16 @@ name: Windows test build
 # an assertion can see. It needed a person watching a real Windows screen, and
 # that person needs an installer to watch.
 #
-# Runs only when asked, so it costs nothing until it is wanted.
+# Runs on every push to main (so commit+push yields an installable .exe as an
+# artifact) and on manual dispatch for any other ref.
+#
+# The release workflow only runs on a tag, so without this the only way to get
+# a Windows installer was to tag one. See the history in git log for why that
+# cost real bugs.
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
     inputs:
       ref:

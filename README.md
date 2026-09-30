@@ -8,8 +8,8 @@
 
 <p align="center">
   <a href="#download"><img src="https://img.shields.io/badge/-Download-2ea44f?style=for-the-badge" alt="Download"></a>
-  <a href="https://github.com/users/shyhunter/projects/9"><img src="https://img.shields.io/badge/-Roadmap-0969da?style=for-the-badge" alt="Roadmap"></a>
-  <a href="https://github.com/shyhunter/PaperNinja/wiki"><img src="https://img.shields.io/badge/-Wiki-8A2BE2?style=for-the-badge" alt="Wiki"></a>
+  <a href="https://github.com/users/latiefahmad/projects/9"><img src="https://img.shields.io/badge/-Roadmap-0969da?style=for-the-badge" alt="Roadmap"></a>
+  <a href="https://github.com/latiefahmad/PaperNinja/wiki"><img src="https://img.shields.io/badge/-Wiki-8A2BE2?style=for-the-badge" alt="Wiki"></a>
 </p>
 
 <br>
@@ -79,13 +79,13 @@ PaperNinja ships with **19 tools** across three categories, all running locally 
 > Italian, Dutch, Polish and European Portuguese. PaperNinja follows your
 > operating system's language on first run and remembers an explicit choice.
 > The eight translations beyond English are community-quality and still under
-> review: if something reads wrongly, [tell us](https://github.com/shyhunter/PaperNinja/issues/new/choose).
+> review: if something reads wrongly, [tell us](https://github.com/latiefahmad/PaperNinja/issues/new/choose).
 
 ---
 
 ## Roadmap
 
-**[The roadmap is public.](https://github.com/users/shyhunter/projects/9)** What is
+**[The roadmap is public.](https://github.com/users/latiefahmad/projects/9)** What is
 being worked on, what is agreed for later, and what has been decided against,
 with the reasoning, not just the verdict.
 
@@ -113,7 +113,7 @@ in English everywhere, never half-done, and a test enforces that. A confusing
 warning is worse than a foreign one.
 
 **If a string reads oddly, says the wrong thing, or is missing, please
-[open an issue](https://github.com/shyhunter/PaperNinja/issues).** Corrections from
+[open an issue](https://github.com/latiefahmad/PaperNinja/issues).** Corrections from
 native speakers are the most useful contribution this project can receive.
 
 ---
@@ -138,18 +138,18 @@ system's where one is licensed.
 ## Download
 
 <p align="center">
-  <a href="https://github.com/shyhunter/PaperNinja/releases/latest"><img src="https://img.shields.io/github/v/release/shyhunter/PaperNinja?label=version&style=for-the-badge" alt="Latest version"></a>
+  <a href="https://github.com/latiefahmad/PaperNinja/releases/latest"><img src="https://img.shields.io/github/v/release/latiefahmad/PaperNinja?label=version&style=for-the-badge" alt="Latest version"></a>
 </p>
 
 | Platform | Installer | Download |
 |----------|-----------|----------|
-| **Mac (M1/M2/M3/M4)** | .dmg | [Download](https://github.com/shyhunter/PaperNinja/releases/latest) |
-| **Mac (Intel)** | .dmg | [Download](https://github.com/shyhunter/PaperNinja/releases/latest) |
-| **Windows** | .exe | [Download](https://github.com/shyhunter/PaperNinja/releases/latest) |
-| **Linux (AppImage)** | .AppImage | [Download](https://github.com/shyhunter/PaperNinja/releases/latest) |
-| **Linux (Debian/Ubuntu)** | .deb | [Download](https://github.com/shyhunter/PaperNinja/releases/latest) |
+| **Mac (M1/M2/M3/M4)** | .dmg | [Download](https://github.com/latiefahmad/PaperNinja/releases/latest) |
+| **Mac (Intel)** | .dmg | [Download](https://github.com/latiefahmad/PaperNinja/releases/latest) |
+| **Windows** | .exe | [Download](https://github.com/latiefahmad/PaperNinja/releases/latest) |
+| **Linux (AppImage)** | .AppImage | [Download](https://github.com/latiefahmad/PaperNinja/releases/latest) |
+| **Linux (Debian/Ubuntu)** | .deb | [Download](https://github.com/latiefahmad/PaperNinja/releases/latest) |
 
-The links above always point to the latest release on [GitHub Releases](https://github.com/shyhunter/PaperNinja/releases). Everything you need is included: just install and go.
+The links above always point to the latest release on [GitHub Releases](https://github.com/latiefahmad/PaperNinja/releases). Everything you need is included: just install and go.
 
 > **Mac users:** PaperNinja is signed but not yet notarised by Apple, so macOS blocks the first launch. Verified on macOS 26:
 >
@@ -221,13 +221,13 @@ DOC/DOCX conversion and EPUB/MOBI tools need LibreOffice or Calibre installed
 and on your PATH. PaperNinja will show a prompt naming the missing dependency
 if one isn't found.
 
-See the [Required Dependencies](https://github.com/shyhunter/PaperNinja/wiki/Required-Dependencies)
+See the [Required Dependencies](https://github.com/latiefahmad/PaperNinja/wiki/Required-Dependencies)
 wiki page for full per-platform detail.
 
 ### Still stuck?
 
-Check the [Troubleshooting wiki page](https://github.com/shyhunter/PaperNinja/wiki/Troubleshooting)
-for more error messages, or [open an issue](https://github.com/shyhunter/PaperNinja/issues/new/choose)
+Check the [Troubleshooting wiki page](https://github.com/latiefahmad/PaperNinja/wiki/Troubleshooting)
+for more error messages, or [open an issue](https://github.com/latiefahmad/PaperNinja/issues/new/choose)
 and include the exact error message.
 
 </details>
@@ -301,4 +301,4 @@ Contributions are welcome! Please see the [pull request template](.github/pull_r
 
 ---
 
-If PaperNinja saves you time, consider [buying me a coffee](https://buymeacoffee.com/shyhunter): it helps keep development going.
+If PaperNinja saves you time, consider [buying me a coffee](https://buymeacoffee.com/latiefahmad): it helps keep development going.
