@@ -1,0 +1,562 @@
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  # Only for linking the Announcements discussion when a release publishes.
+  discussions: write
+
+jobs:
+  # Gate: all tests must pass before building release artifacts
+  test-gate:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c # stable
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+        with:
+          workspaces: src-tauri -> target
+
+      - name: Install Linux system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Version consistency check (tag vs source)
+        run: npm run version:check
+        env:
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+
+      - name: TypeScript type check
+        run: npx tsc --noEmit
+
+      - name: Unit tests
+        run: npm run test
+
+      - name: Cargo check
+        run: cd src-tauri && cargo check
+
+      - name: Clippy lint
+        run: cd src-tauri && cargo clippy -- -D warnings
+
+  build:
+    needs: test-gate
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+            target: aarch64-apple-darwin
+          - platform: macos-14
+            target: x86_64-apple-darwin
+          - platform: windows-latest
+            target: x86_64-pc-windows-msvc
+          - platform: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c # stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+        with:
+          workspaces: src-tauri -> target
+
+      - name: Install Linux dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      # Tauri's bundler downloads the AppImage launcher (AppRun) into its tool
+      # cache and marks it 0770: no execute bit for "others". It then copies it
+      # into the AppImage as AppRun.wrapped with those bits intact. Launched by
+      # its owner the AppImage works, which is why the smoke test below passed,
+      # but anything that mounts it as a different user (firejail's AppImage
+      # sandbox, AppImageHub's test bot) gets "AppRun.wrapped: Permission
+      # denied" and the app dies on start. Still 0o770 upstream as of Tauri
+      # 2.11 (crates/tauri-bundler/src/bundle/linux/appimage/mod.rs).
+      #
+      # The bundler only downloads when the cached file is missing, so placing
+      # the same file there first, with 0755, is enough. The hash pins it to
+      # the exact binary v1.0.0 shipped, so this cannot swap in anything else.
+      - name: "Linux: Pre-seed AppImage launcher with correct permissions"
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          TOOLS="$HOME/.cache/tauri"
+          mkdir -p "$TOOLS"
+          curl -fsSL -o "$TOOLS/AppRun-x86_64" \
+            https://github.com/tauri-apps/binary-releases/releases/download/apprun-old/AppRun-x86_64
+          echo "f30140a43a0a59e46db21bdefdf749b9e9f2c6946e92afabbacf98b8ae73fb4f  $TOOLS/AppRun-x86_64" | sha256sum -c -
+          chmod 0755 "$TOOLS/AppRun-x86_64"
+
+      - name: Derive version from tag
+        id: version
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          if [[ "$VERSION" == *-* ]]; then
+            echo "is_prerelease=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_prerelease=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build Tauri app
+        uses: tauri-apps/tauri-action@1deb371b0cd8bd54025b384f1cd735e725c4060f # v1.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: 'PaperNinja ${{ github.ref_name }}'
+          releaseBody: |
+            ## Install PaperNinja
+
+            Click the link for your platform to download. Then open the file to install.
+
+            | Platform | Installer | Download |
+            |----------|-----------|----------|
+            | **Mac (M1/M2/M3/M4)** | .dmg | [Download](https://github.com/shyhunter/PaperNinja/releases/download/${{ github.ref_name }}/PaperNinja_${{ steps.version.outputs.version }}_aarch64.dmg) |
+            | **Mac (Intel)** | .dmg | [Download](https://github.com/shyhunter/PaperNinja/releases/download/${{ github.ref_name }}/PaperNinja_${{ steps.version.outputs.version }}_x64.dmg) |
+            | **Windows** | .exe | [Download](https://github.com/shyhunter/PaperNinja/releases/download/${{ github.ref_name }}/PaperNinja_${{ steps.version.outputs.version }}_x64-setup.exe) |
+            | **Linux (AppImage)** | .AppImage | [Download](https://github.com/shyhunter/PaperNinja/releases/download/${{ github.ref_name }}/PaperNinja_${{ steps.version.outputs.version }}_amd64.AppImage) |
+            | **Linux (Debian/Ubuntu)** | .deb | [Download](https://github.com/shyhunter/PaperNinja/releases/download/${{ github.ref_name }}/PaperNinja_${{ steps.version.outputs.version }}_amd64.deb) |
+
+            Everything you need is included: just install and go.
+
+            > **Mac users:** PaperNinja has no Apple developer certificate, so macOS stops the first open. Which way it stops you depends on your Mac:
+            >
+            > - **"Apple could not verify PaperNinja is free of malware"** — click Done, then open **System Settings → Privacy & Security**, scroll to Security, and click **Open Anyway** next to PaperNinja. Do it within an hour or the button expires. Open the app again and click Open Anyway in the dialog.
+            > - **"PaperNinja is damaged and can't be opened"** — there is no Open Anyway for this one. Drag the app into Applications, then run this in **Terminal**:
+            >
+            > ```
+            > xattr -dr com.apple.quarantine /Applications/PaperNinja.app
+            > ```
+            >
+            > Then open PaperNinja normally. Neither message means anything is wrong with the app.
+            >
+            > **What that command does:** `xattr` edits extended attributes, the small labels macOS attaches to files. `-d com.apple.quarantine` deletes one named label — the "this came from the internet" tag. `-r` applies it through the bundle, because an app is a folder. The path is the only thing it touches.
+            >
+            > **What it does not do:** there is no `sudo`, so it needs no admin rights. It does not turn Gatekeeper off and it does not affect any other app — every other download on your Mac stays checked exactly as before. Run `xattr /Applications/PaperNinja.app` before and after if you would rather check than trust.
+
+            > **Windows users:** If you see _"Windows protected your PC"_ (a SmartScreen warning), click **More info**, then **Run anyway**. This happens because the app is not yet signed with a Windows code-signing certificate: it is safe to use.
+
+            > **Ubuntu / Debian users:** install **and update** from a terminal, in the folder you downloaded to:
+            >
+            > ```
+            > cd ~/Downloads
+            > sudo apt install ./PaperNinja_${{ steps.version.outputs.version }}_amd64.deb
+            > ```
+            >
+            > Updating from an older PaperNinja is the same command: apt replaces the old version and your settings stay. Double-clicking the file opens Ubuntu's App Center instead, which labels every `.deb` from outside Ubuntu's own store _"potentially unsafe"_ and, when an older PaperNinja is already installed, only shows **Installed** and does nothing. `dpkg -s paper-ninja | grep Version` shows which version you have.
+
+            > **Note:** Ebook conversion (EPUB, MOBI) requires [Calibre](https://calibre-ebook.com/download): most users won't need this.
+
+            ---
+
+            <details>
+            <summary>Verifying your download</summary>
+
+            `SHA256SUMS.txt` in the Assets below lists the SHA-256 of every file
+            in this release. To check the one you downloaded:
+
+            ```
+            shasum -a 256 -c SHA256SUMS.txt --ignore-missing
+            ```
+
+            On Linux the command is `sha256sum` instead of `shasum -a 256`.
+
+            This proves the file arrived intact and unaltered in transit. It is
+            not a signature: it says nothing about who built the file, only that
+            the bytes match what this release published.
+            </details>
+
+            <details>
+            <summary>What are the Assets below?</summary>
+
+            The **Assets** section below is GitHub's automatic list of the same installer files from the table above. You don't need to use it: the download links in the table are the same files. The `Source code` entries are the raw project code and are only useful for developers.
+            </details>
+          releaseDraft: true
+          prerelease: ${{ steps.version.outputs.is_prerelease }}
+          args: --target ${{ matrix.target }}
+
+  # ── Smoke tests: verify each platform artifact launches before publishing ──
+  smoke-test:
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+            asset: "PaperNinja_{version}_aarch64.dmg"
+            type: dmg
+          - platform: macos-14
+            asset: "PaperNinja_{version}_x64.dmg"
+            type: dmg
+          - platform: windows-latest
+            asset: "PaperNinja_{version}_x64-setup.exe"
+            type: nsis
+          - platform: ubuntu-22.04
+            asset: "PaperNinja_{version}_amd64.AppImage"
+            type: appimage
+
+    runs-on: ${{ matrix.platform }}
+    timeout-minutes: 15
+
+    steps:
+      - name: Derive asset filename
+        id: asset
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          ASSET=$(echo "${{ matrix.asset }}" | sed "s/{version}/$VERSION/g")
+          echo "filename=${ASSET}" >> "$GITHUB_OUTPUT"
+          echo "Will download: ${ASSET}"
+
+      - name: Download release artifact
+        shell: bash
+        run: |
+          if ! gh release view "$GITHUB_REF_NAME" --repo "${{ github.repository }}" --json assets -q ".assets[].name" 2>/dev/null | grep -q "${{ steps.asset.outputs.filename }}"; then
+            echo "FAIL: Asset ${{ steps.asset.outputs.filename }} not found in release $GITHUB_REF_NAME"
+            echo "Available assets:"
+            gh release view "$GITHUB_REF_NAME" --repo "${{ github.repository }}" --json assets -q ".assets[].name" 2>/dev/null || echo "(release not found)"
+            exit 1
+          fi
+          gh release download "$GITHUB_REF_NAME" \
+            --repo "${{ github.repository }}" \
+            --pattern "${{ steps.asset.outputs.filename }}" \
+            --dir .
+          ls -la "${{ steps.asset.outputs.filename }}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── macOS (.dmg) ──
+      - name: "macOS: Mount DMG, verify app launches, check version"
+        if: matrix.type == 'dmg'
+        run: |
+          hdiutil attach "${{ steps.asset.outputs.filename }}" -nobrowse -mountpoint /Volumes/PaperNinja
+          test -d "/Volumes/PaperNinja/PaperNinja.app" || { echo "FAIL: PaperNinja.app not found in DMG"; exit 1; }
+
+          # A broken signature is worse than no signature: macOS reports
+          # "PaperNinja is damaged and can't be opened" and tells the user to move
+          # it to the Trash, which reads as malware rather than as an unsigned
+          # indie app. Every release up to v1.0.0-beta.9 shipped that way -- the
+          # arm64 linker ad-hoc signs the executable, but nothing sealed the
+          # bundle, so `codesign --verify` failed on the artifact users
+          # downloaded. Checked here so it cannot come back unnoticed.
+          if ! codesign --verify --deep --strict --verbose=2 "/Volumes/PaperNinja/PaperNinja.app"; then
+            echo "FAIL: the app bundle's signature does not verify"
+            codesign -dvv "/Volumes/PaperNinja/PaperNinja.app" || true
+            hdiutil detach /Volumes/PaperNinja || true
+            exit 1
+          fi
+          echo "PASS: bundle signature verifies, sidecar included"
+
+          BINARY="/Volumes/PaperNinja/PaperNinja.app/Contents/MacOS/tauri-app"
+          if [ ! -x "$BINARY" ]; then
+            BINARY="/Volumes/PaperNinja/PaperNinja.app/Contents/MacOS/PaperNinja"
+          fi
+          if [ ! -x "$BINARY" ]; then
+            echo "FAIL: No app binary found in Contents/MacOS/"
+            exit 1
+          fi
+
+          "$BINARY" &
+          APP_PID=$!
+          sleep 8
+
+          if kill -0 "$APP_PID" 2>/dev/null; then
+            echo "PASS: PaperNinja running with PID: $APP_PID"
+          else
+            echo "FAIL: PaperNinja exited prematurely"
+            exit 1
+          fi
+
+          # Version assertion: Info.plist CFBundleShortVersionString must match tag
+          PLIST="/Volumes/PaperNinja/PaperNinja.app/Contents/Info.plist"
+          BUNDLE_VERSION=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" "$PLIST" 2>/dev/null || echo "")
+          EXPECTED_VERSION="${{ steps.asset.outputs.version }}"
+          if [ "$BUNDLE_VERSION" != "$EXPECTED_VERSION" ]; then
+            echo "FAIL: Info.plist CFBundleShortVersionString=\"$BUNDLE_VERSION\" expected \"$EXPECTED_VERSION\""
+            kill "$APP_PID" 2>/dev/null || true
+            hdiutil detach /Volumes/PaperNinja
+            exit 1
+          fi
+          echo "PASS: Version in bundle: $BUNDLE_VERSION ✓"
+
+          kill "$APP_PID" 2>/dev/null || true
+          sleep 2
+          hdiutil detach /Volumes/PaperNinja
+          echo "=== macOS smoke test PASSED ==="
+
+      # ── Windows (NSIS .exe) ──
+      - name: "Windows: Install, verify app launches, check version"
+        if: matrix.type == 'nsis'
+        shell: pwsh
+        run: |
+          $installer = "${{ steps.asset.outputs.filename }}"
+          Start-Process -FilePath ".\$installer" -ArgumentList "/S" -Wait -NoNewWindow
+
+          # Tauri's Cargo package name is "tauri-app"; the NSIS installer may use
+          # either the productName ("PaperNinja") or the Cargo binary name ("tauri-app")
+          # for the .exe. Search for both in all plausible install locations.
+          $candidateNames = @("PaperNinja.exe", "tauri-app.exe")
+          $searchRoots = @(
+            $env:LOCALAPPDATA,
+            $env:ProgramFiles,
+            ${env:ProgramFiles(x86)},
+            $env:APPDATA
+          )
+
+          $binary = $null
+          foreach ($root in $searchRoots) {
+            if (-Not $root) { continue }
+            foreach ($name in $candidateNames) {
+              $found = Get-ChildItem -Path $root -Recurse -Filter $name -ErrorAction SilentlyContinue -Depth 5 | Select-Object -First 1
+              if ($found) { $binary = $found.FullName; break }
+            }
+            if ($binary) { break }
+          }
+
+          if (-Not $binary) {
+            Write-Host "FAIL: No PaperNinja binary found after install."
+            Write-Host "--- Listing $env:LOCALAPPDATA (depth 4) ---"
+            Get-ChildItem -Path $env:LOCALAPPDATA -Recurse -Depth 4 -ErrorAction SilentlyContinue | Select-Object FullName | Format-Table -AutoSize
+            exit 1
+          }
+          Write-Host "Binary found at: $binary"
+
+          $proc = Start-Process -FilePath $binary -PassThru
+          Start-Sleep -Seconds 8
+
+          if (-Not $proc.HasExited) {
+            Write-Host "PASS: PaperNinja is running (PID: $($proc.Id))"
+          } else {
+            Write-Host "FAIL: PaperNinja exited immediately with code $($proc.ExitCode)"
+            exit 1
+          }
+
+          # Version assertion: ProductVersion in binary metadata must match tag.
+          # Note: Windows PE ProductVersion is a string resource set by Tauri from
+          # tauri.conf.json, so it should match the full semver including pre-release.
+          $expectedVersion = "${{ steps.asset.outputs.version }}"
+          $fileVersion = (Get-Item $binary).VersionInfo.ProductVersion
+          if ($fileVersion -ne $expectedVersion) {
+            Write-Host "FAIL: ProductVersion='$fileVersion' expected '$expectedVersion'"
+            Stop-Process -Id $proc.Id -Force
+            exit 1
+          }
+          Write-Host "PASS: Version in binary metadata: $fileVersion ✓"
+
+          Stop-Process -Id $proc.Id -Force
+          Write-Host "=== Windows smoke test PASSED ==="
+
+      - name: "Linux: Install display dependencies"
+        if: matrix.type == 'appimage'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-0 libfuse2 xvfb
+
+      # Launching as the owner (below) cannot catch a file that only its owner
+      # may execute. Sandboxes and AppImageHub mount the image as another user,
+      # so every executable inside must be executable by "others" too.
+      - name: "Linux: Verify AppImage file permissions"
+        if: matrix.type == 'appimage'
+        run: |
+          APPIMAGE="${{ steps.asset.outputs.filename }}"
+          chmod +x "$APPIMAGE"
+          ./"$APPIMAGE" --appimage-extract >/dev/null
+          BAD=$(find squashfs-root -type f -perm -u+x ! -perm -o+x)
+          rm -rf squashfs-root
+          if [ -n "$BAD" ]; then
+            echo "FAIL: executables inside the AppImage that other users cannot run:"
+            echo "$BAD"
+            exit 1
+          fi
+          echo "PASS: every executable in the AppImage is world-executable"
+
+      - name: "Linux: Verify AppImage launches"
+        if: matrix.type == 'appimage'
+        run: |
+          APPIMAGE="${{ steps.asset.outputs.filename }}"
+          chmod +x "$APPIMAGE"
+
+          export DISPLAY=:99
+          Xvfb :99 -screen 0 1280x720x24 &
+          XVFB_PID=$!
+          sleep 2
+
+          ./$APPIMAGE &
+          APP_PID=$!
+          sleep 8
+
+          if kill -0 "$APP_PID" 2>/dev/null; then
+            echo "PASS: PaperNinja AppImage is running (PID: $APP_PID)"
+          else
+            echo "FAIL: PaperNinja AppImage exited prematurely"
+            kill "$XVFB_PID" 2>/dev/null || true
+            exit 1
+          fi
+
+          kill "$APP_PID" 2>/dev/null || true
+          kill "$XVFB_PID" 2>/dev/null || true
+          echo "=== Linux smoke test PASSED ==="
+          # Note: AppImage format does not expose version metadata; version check skipped.
+
+  # ── Publish: promote draft to live only after all smoke tests pass ─────────
+  publish-release:
+    needs: smoke-test
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Publish SHA-256 checksums
+        # Written while the release is still a draft, so it is never public for
+        # a moment without them. `gh release download` fetches the uploaded
+        # installers only; the auto-generated source tarballs are not assets and
+        # are skipped, which is what we want -- these hashes describe the files
+        # people actually run.
+        #
+        # Worth being plain about the limit: a checksum hosted beside the file
+        # it describes proves the download arrived intact, not that it is
+        # authentic. Anyone who could replace the installer could replace this
+        # too. Authenticity needs code signing, which is a separate decision.
+        run: |
+          set -euo pipefail
+          work="$(mktemp -d)"
+          gh release download "$GITHUB_REF_NAME" --dir "$work"
+          cd "$work"
+          rm -f SHA256SUMS.txt
+          if [ -z "$(ls -A)" ]; then
+            echo "the draft release has no assets to checksum"
+            exit 1
+          fi
+          sha256sum -- * > SHA256SUMS.txt
+          echo "checksummed $(wc -l < SHA256SUMS.txt) assets:"
+          cat SHA256SUMS.txt
+          # Read them back off disk: a malformed file would otherwise ship happily.
+          sha256sum -c SHA256SUMS.txt
+          # --repo, because this runs from $work: `gh` looks for a git repo in
+          # the working directory and this one is a temp dir, so without it the
+          # upload dies with "fatal: not a git repository" after the checksums
+          # have already been computed and verified. The step above this one
+          # runs before the `cd` and never hit it.
+          gh release upload "$GITHUB_REF_NAME" SHA256SUMS.txt --clobber --repo "$GITHUB_REPOSITORY"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # What changed, above the install table. Written per release in
+      # docs/release-notes/<tag>.md; a release without one keeps the plain
+      # install notes. Never blocks a release that is otherwise ready.
+      - name: Add "What's new" to the release notes
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          NOTES="docs/release-notes/${GITHUB_REF_NAME}.md"
+          if [ ! -f "$NOTES" ]; then
+            echo "no $NOTES, keeping the install notes as they are"
+            exit 0
+          fi
+          gh release view "$GITHUB_REF_NAME" --json body --jq .body > current-body.md
+          { cat "$NOTES"; echo; cat current-body.md; } > release-body.md
+          gh release edit "$GITHUB_REF_NAME" --notes-file release-body.md
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Promote draft to published release
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          if [[ "$VERSION" == *-* ]]; then
+            gh release edit "$GITHUB_REF_NAME" --draft=false --prerelease
+          else
+            gh release edit "$GITHUB_REF_NAME" --draft=false --prerelease=false
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Opens a discussion in Announcements linked to the release, with the
+      # release notes as its text. Stable releases only. The category must
+      # already exist; if it does not, the release is still published and this
+      # step's log says why.
+      - name: Announce the release in Discussions
+        if: ${{ !contains(github.ref_name, '-') }}
+        continue-on-error: true
+        run: gh release edit "$GITHUB_REF_NAME" --discussion-category "Announcements"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+
+      - name: Build winget manifests
+        # winget packages live in Microsoft's winget-pkgs repository rather than
+        # in this one, so these are kept as a workflow artifact instead of being
+        # attached to the release: the release page is for people installing the
+        # app, and three YAML files would only be noise there.
+        #
+        # Built from the published SHA256SUMS.txt rather than from a local copy
+        # of the installer, so the manifest describes the same bytes the release
+        # actually serves. Submitting a version then means copying three files
+        # into a fork of winget-pkgs, instead of hand-writing YAML and pasting a
+        # digest by eye, which is where a wrong hash usually enters.
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+          if [[ "$VERSION" == *-* ]]; then
+            echo "$VERSION is a prerelease; winget takes stable releases only, skipping"
+            exit 0
+          fi
+          mkdir -p _winget
+          gh release download "$GITHUB_REF_NAME" --pattern SHA256SUMS.txt --dir _winget
+          node scripts/winget-manifests.mjs "$VERSION" _winget/SHA256SUMS.txt _winget/manifests
+          rm -f _winget/SHA256SUMS.txt
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload winget manifests
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: winget-manifests
+          path: _winget/manifests
+          if-no-files-found: ignore

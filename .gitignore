@@ -1,0 +1,103 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+coverage
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Bundled sidecar binaries — only the real macOS ARM binary is too large for git.
+# Placeholder stubs for other platforms are committed so Tauri's externalBin check passes.
+src-tauri/binaries/gs-aarch64-apple-darwin
+
+# Bench harness artifacts — the large stress PDF is regenerated locally via
+# `node bench/make-large-fixture.mjs`, not committed (~40 MB).
+bench/dist/
+bench/fixtures/
+
+# E2E test artifacts
+e2e-output/
+test-fixtures-e2e/large-sparse.pdf
+test-fixtures-e2e/large-sparse.jpg
+.e2e-artifacts/
+.worktrees
+
+# --- security baseline (managed by ~/.claude/scripts/security/scaffold-project.sh) ---
+.env
+.env.local
+.env.development
+.env.development.local
+.env.test
+.env.test.local
+.env.staging
+.env.production
+.env.production.local
+.env.*.local
+!.env.example
+!.env.sample
+# secrets / keys
+*.pem
+*.key
+*.p12
+*.pfx
+*_rsa
+*_rsa.pub
+.aws/credentials
+.npmrc.local
+# --- end security baseline ---
+
+# Regression-run results — evidence about one machine at one moment, not a
+# fact about the repository.
+.e2e-results/
+
+# Playwright traces from failed runs — local evidence, not repository facts.
+test-results/
+playwright-report/
+
+# Internal working material, moved to the private Papercut-planning repo when
+# this one went public. The files stay on disk and the GSD commands and skills
+# keep reading them; they are simply not part of what a visitor to a document
+# tool should have to wade through to find the code.
+#
+#   .planning/        roadmap, scope, phase plans, test plan, codebase notes
+#   .claude/          project rules, skills, commands, agent definitions
+#   docs/agents/      issue tracker and triage conventions
+#   docs/superpowers/ agent tooling notes
+#   .security/        updater signing procedure (no keys, by P013)
+#
+# Untracking does not rewrite history: these files remain readable in commits
+# before the change. That was a deliberate call, taken with gitleaks reporting
+# no secrets across all 647 commits.
+.planning/
+.claude/
+docs/agents/
+docs/superpowers/
+.security/
+
+# Translation export: regenerate with scripts/export-translations.mjs.
+translations.csv
+
+# Logo source art — not shared
+brand/source/
+
+# Logo/design preview pages — throwaway, and mark-preview inlines the SVG 16 times
+brand/*-preview.html
+docs/quality/neo-brutalist-preview.html

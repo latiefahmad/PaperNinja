@@ -1,0 +1,137 @@
+name: Pages
+
+# The landing page. A README is documentation for people who already found the
+# project; this is for the ones who have not, and a desktop app needs somewhere
+# to download it from that is not a source-code repository.
+#
+# Built from `site/`, which carries the page, the demo clips, the fonts and icons
+# it used to pull from Google and jsDelivr, and the share card a link preview
+# renders. That card is the og:image now, so the screenshot that used to be
+# copied in for the purpose is gone -- nothing referenced it, because the page
+# had no og tags at all until they were added.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'site/**'
+      - '.github/workflows/pages.yml'
+  # A release changes which files the download buttons point at, and nothing
+  # under site/ changes when it does. Without this the page would go on offering
+  # the previous version until some unrelated site edit happened to redeploy it.
+  release:
+    types: [published]
+  workflow_dispatch:
+
+# Least privilege: read the tree, write only Pages, and prove the deployment
+# came from this workflow.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deployment at a time, and never cancel one in flight — a half-finished
+# publish is a broken site rather than a stale one.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    # Dormant until the repo is public. Pages serving publicly from a private
+    # repo needs a paid plan, so `configure-pages` fails with "Get Pages site
+    # failed" and leaves a red X on every push that touches the site. Like the
+    # CodeQL gate, this removes itself at the visibility flip.
+    #
+    # An expression rather than a guard job: every trigger this workflow has --
+    # `push`, `release` and `workflow_dispatch` -- populates
+    # `github.event.repository`, so the check holds on all three.
+    #
+    # Note for the visibility flip: nothing under site/ changes when the repo
+    # goes public, so no push fires and this will not run on its own. Run it
+    # from the Actions tab once, and pushes take over from there.
+    if: github.event.repository.visibility == 'public'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Assemble the site
+        run: |
+          set -euo pipefail
+          mkdir -p _site
+          cp -R site/. _site/
+          # Provenance for the committed font binaries: repo documentation, not
+          # a web asset.
+          rm -f _site/fonts/README.md
+          # A missing asset on a download page reads as a broken product, so
+          # fail the build here rather than ship one.
+          for f in index.html \
+                   fonts/bricolage-var.woff2 \
+                   fonts/archivo-latin.woff2 fonts/archivo-latin-ext.woff2 \
+                   fonts/jetbrains-mono-latin.woff2 fonts/jetbrains-mono-latin-ext.woff2 \
+                   favicon.png apple-touch-icon.png \
+                   media/share-card.jpg \
+                   media/ninja-mac.png media/ninja-windows.png media/ninja-linux.png \
+                   media/hero.mp4 media/hero-poster.jpg \
+                   media/compress.mp4 media/compress-poster.jpg \
+                   media/ebook.mp4 media/ebook-poster.jpg \
+                   media/markdown.mp4 media/markdown-poster.jpg \
+                   media/signature.mp4 media/signature-poster.jpg \
+                   media/redact.mp4 media/redact-poster.jpg; do
+            test -f "_site/$f" || { echo "missing asset: $f"; exit 1; }
+          done
+          # The page claims the product talks to nobody. It should not itself
+          # fetch a font or a script from a third party, and this is the check
+          # that keeps a future edit from quietly reintroducing one. Only
+          # outbound links the reader clicks are allowed, plus two hosts that
+          # are named but never fetched: schema.org is the JSON-LD vocabulary
+          # identifier, and shyhunter.github.io is this site's own origin,
+          # spelled absolutely because og:image and canonical require it.
+          if grep -Eo 'https?://[a-zA-Z0-9.-]+' _site/index.html \
+             | grep -vE '^https?://(github\.com|buymeacoffee\.com|www\.w3\.org|opensource\.org|schema\.org|shyhunter\.github\.io)$' \
+             | sort -u | grep .; then
+            echo "third-party resource host in index.html (listed above)"; exit 1
+          fi
+          echo "assembled:"; find _site -type f | sort
+
+      - name: Point the download links at the current version
+        # The page ships real, version-stamped URLs rather than a placeholder, so
+        # the file is correct opened straight from the repo or published as a
+        # design artifact. This rewrites them to the version the app is actually
+        # at, which is what stops the site offering the previous release after a
+        # new one ships -- and it catches the two Linux install commands, which
+        # name the .deb and .AppImage by filename and would otherwise go stale
+        # on their own. tauri.conf.json is the version of record: the same file
+        # the installers are built from.
+        run: |
+          set -euo pipefail
+          VER="$(node -p "require('./src-tauri/tauri.conf.json').version")"
+          case "$VER" in
+            [0-9]*.[0-9]*.[0-9]*) ;;
+            *) echo "tauri.conf.json has no usable version: '$VER'"; exit 1 ;;
+          esac
+          sed -E -i \
+            -e "s#PaperNinja_[0-9]+\.[0-9]+\.[0-9]+_#PaperNinja_${VER}_#g" \
+            -e "s#releases/download/v[0-9]+\.[0-9]+\.[0-9]+/#releases/download/v${VER}/#g" \
+            _site/index.html
+          # A button pointing at a version that was never released is worse than
+          # one pointing at the releases page, so a survivor fails the build
+          # rather than shipping a 404 to every visitor.
+          STRAY="$(grep -oE 'PaperNinja_[0-9]+\.[0-9]+\.[0-9]+_|releases/download/v[0-9]+\.[0-9]+\.[0-9]+/' _site/index.html \
+                   | grep -v "$VER" | sort -u || true)"
+          if [ -n "$STRAY" ]; then
+            echo "a version other than $VER survived the rewrite:"; echo "$STRAY"; exit 1
+          fi
+          echo "download links point at v$VER"
+
+      - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: _site
+
+      - id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

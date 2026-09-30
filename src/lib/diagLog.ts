@@ -1,0 +1,100 @@
+// Diagnostic logger, DEVELOPMENT ONLY.
+//
+// Built to chase the editor freeze bug (now resolved: React 19.2's dev-only
+// Performance Tracks walking a Uint8Array). Kept because it is the instrument
+// for the next freeze-shaped bug, but it must never run in a shipped build.
+//
+// It used to. Confirmed on a real Linux build on 2026-08-30: every launch
+// painted a green bar across the top of the window reading "DIAG-OK: /home/
+// .../Downloads/paperninja-diag.log", at z-index 999999 with no timeout, wrote a
+// file into the user's Downloads folder, and started a 500ms heartbeat that
+// never stopped. Types, lint, the whole vitest suite and CI passed on it for
+// weeks -- it took installing the .deb and looking at the window.
+//
+// Removing the 39 call sites is a separate, later task. This gate is what stops
+// any of it reaching a user.
+import { writeFile } from '@tauri-apps/plugin-fs';
+import { downloadDir, join } from '@tauri-apps/api/path';
+
+/**
+ * Whether the logger runs at all.
+ *
+ * Read per call rather than captured in a module-scope constant. The platform
+ * gate shipped with exactly that bug first: a constant evaluated at import is
+ * unstubbable, so no test can exercise the other branch.
+ */
+function diagEnabled(): boolean {
+  return import.meta.env.DEV;
+}
+
+let logPath: string | null = null;
+let queue: string[] = [];
+let writing = false;
+let accumulated = ''; // writeFile always overwrites, so we keep the full text in memory
+
+async function getLogPath(): Promise<string> {
+  if (!logPath) {
+    // Deliberately not the Desktop. Desktop is TCC-protected and, when the
+    // "Desktop & Documents in iCloud" setting is on, synced — so a write can
+    // block on a cloud daemon that is offline and fail with ETIMEDOUT. That is
+    // not hypothetical: it happened during REL-03 and cost the session its logs
+    // at exactly the moment they were needed. Startup chains off diagLogReset,
+    // so the stall delayed app launch too.
+    //
+    // Downloads is inside the static fs capability scope (so no grant is
+    // needed) and is not covered by the iCloud Desktop & Documents setting.
+    logPath = await join(await downloadDir(), 'paperninja-diag.log');
+  }
+  return logPath;
+}
+
+async function flush() {
+  if (writing || queue.length === 0) return;
+  writing = true;
+  const batch = queue;
+  queue = [];
+  accumulated += batch.join('');
+  try {
+    const path = await getLogPath();
+    await writeFile(path, new TextEncoder().encode(accumulated));
+  } catch {
+    // swallow — diagnostics must never break the app
+  } finally {
+    writing = false;
+    if (queue.length > 0) flush();
+  }
+}
+
+export function diagLog(msg: string) {
+  if (!diagEnabled()) return;
+  queue.push(`[${performance.now().toFixed(0)}] ${msg}\n`);
+  flush();
+}
+
+function showDiagBanner(text: string, ok: boolean) {
+  let el = document.getElementById('diag-banner');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'diag-banner';
+    el.style.cssText =
+      'position:fixed;top:0;left:0;right:0;z-index:999999;padding:4px 8px;' +
+      'font:11px monospace;white-space:pre-wrap;word-break:break-all;';
+    document.body.appendChild(el);
+  }
+  el.style.background = ok ? '#0a0' : '#a00';
+  el.style.color = '#fff';
+  el.textContent = text;
+}
+
+/** Call once at app startup to reset the log file for a fresh session, and print its path. */
+export async function diagLogReset() {
+  if (!diagEnabled()) return;
+  try {
+    const path = await getLogPath();
+    accumulated = `=== SESSION START ${new Date().toISOString()} — ${path} ===\n`;
+    await writeFile(path, new TextEncoder().encode(accumulated));
+    showDiagBanner(`DIAG-OK: ${path}`, true);
+  } catch (err) {
+    showDiagBanner(`DIAG-ERROR: ${err instanceof Error ? err.message : String(err)}`, false);
+  }
+}

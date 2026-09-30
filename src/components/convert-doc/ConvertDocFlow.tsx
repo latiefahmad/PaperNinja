@@ -1,0 +1,138 @@
+import { useState, useCallback } from 'react';
+import { ConvertPickStep } from '@/components/convert-doc/ConvertPickStep';
+import { ConvertConfigStep } from '@/components/convert-doc/ConvertConfigStep';
+import { ConvertCompareStep } from '@/components/convert-doc/ConvertCompareStep';
+import { SaveStep } from '@/components/SaveStep';
+import { StepErrorBoundary } from '@/components/ErrorBoundary';
+import { getFileName } from '@/lib/fileValidation';
+import type { ConvertFormat, ConvertResult } from '@/types/converter';
+import { t } from '@/i18n';
+
+function buildSaveName(sourceFileName: string, outputFormat: ConvertFormat, archive?: boolean): string {
+  const base = sourceFileName.replace(/\.[^.]+$/, '');
+  return archive ? `${base}-chapters.zip` : `${base}-converted.${outputFormat}`;
+}
+
+function buildSaveFilters(
+  outputFormat: ConvertFormat,
+  archive?: boolean,
+): Array<{ name: string; extensions: string[] }> {
+  if (archive) return [{ name: t('filter.zipArchive'), extensions: ['zip'] }];
+  const labels: Record<ConvertFormat, string> = {
+    pdf: 'PDF Document',
+    docx: t('convertDocFlow.wordDocument'),
+    doc: t('convertDocFlow.word972003Document'),
+    odt: 'OpenDocument Text',
+    epub: 'EPUB Ebook',
+    mobi: 'MOBI Ebook',
+    azw3: 'AZW3 Ebook',
+    txt: t('convertDocFlow.plainText'),
+    rtf: t('convertDocFlow.richTextFormat'),
+    md: 'Markdown',
+    html: 'HTML',
+    json: 'JSON',
+  };
+  return [{ name: labels[outputFormat] ?? outputFormat.toUpperCase(), extensions: [outputFormat] }];
+}
+
+interface ConvertDocFlowProps {
+  onStepChange?: (step: number) => void;
+}
+
+export function ConvertDocFlow({ onStepChange }: ConvertDocFlowProps) {
+  const [step, setStep] = useState(0);
+
+  const goToStep = useCallback((s: number) => {
+    setStep(s);
+    onStepChange?.(s);
+  }, [onStepChange]);
+  const [filePath, setFilePath] = useState<string | null>(null);
+  const [fileName, setFileName] = useState('');
+  const [sourceFormat, setSourceFormat] = useState<ConvertFormat>('pdf');
+  const [convertResult, setConvertResult] = useState<ConvertResult | null>(null);
+  const [savedFilePath, setSavedFilePath] = useState<string | null>(null);
+
+  const handleFilePicked = useCallback((path: string, format: ConvertFormat) => {
+    setFilePath(path);
+    setFileName(getFileName(path));
+    setSourceFormat(format);
+    setConvertResult(null);
+    setSavedFilePath(null);
+    goToStep(1);
+  }, [goToStep]);
+
+  const handleConvertComplete = useCallback((result: ConvertResult) => {
+    setConvertResult(result);
+    goToStep(2);
+  }, [goToStep]);
+
+  const handleSave = useCallback(() => {
+    goToStep(3);
+  }, [goToStep]);
+
+  const handleStartOver = useCallback(() => {
+    setFilePath(null);
+    setFileName('');
+    setConvertResult(null);
+    setSavedFilePath(null);
+    goToStep(0);
+  }, [goToStep]);
+
+  const handleBackFromConfig = useCallback(() => {
+    setFilePath(null);
+    setFileName('');
+    setConvertResult(null);
+    goToStep(0);
+  }, [goToStep]);
+
+  return (
+    <StepErrorBoundary stepName="Convert Document">
+      {/* Step 0: Pick */}
+      {step === 0 && (
+        <ConvertPickStep onFilePicked={handleFilePicked} />
+      )}
+
+      {/* Step 1: Configure */}
+      {step === 1 && filePath && (
+        <ConvertConfigStep
+          filePath={filePath}
+          fileName={fileName}
+          sourceFormat={sourceFormat}
+          onConvertComplete={handleConvertComplete}
+          onBack={handleBackFromConfig}
+        />
+      )}
+
+      {/* Step 2: Compare */}
+      {step === 2 && convertResult && (
+        <ConvertCompareStep
+          result={convertResult}
+          sourceFileName={fileName}
+          sourceFormat={sourceFormat}
+          onSave={handleSave}
+          onStartOver={handleStartOver}
+          onBack={() => goToStep(1)}
+        />
+      )}
+
+      {/* Step 3: Save */}
+      {step === 3 && convertResult && (
+        <SaveStep
+          originPath={filePath}
+          processedBytes={convertResult.outputBytes}
+          sourceFileName={fileName}
+          defaultSaveName={buildSaveName(fileName, convertResult.outputFormat, convertResult.archive)}
+          saveFilters={buildSaveFilters(convertResult.outputFormat, convertResult.archive)}
+          savedFilePath={savedFilePath}
+          onDismissSaveConfirmation={() => setSavedFilePath(null)}
+          onSaveComplete={(path) => setSavedFilePath(path)}
+          onCancel={() => goToStep(2)}
+          onBack={() => {
+            setSavedFilePath(null);
+            goToStep(2);
+          }}
+        />
+      )}
+    </StepErrorBoundary>
+  );
+}

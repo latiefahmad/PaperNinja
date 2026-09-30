@@ -1,0 +1,23 @@
+# Keeps the issue chooser to bugs, and routes everything else to a surface that
+# is not a task list.
+#
+# Feature ideas go to Discussions → Ideas rather than to Issues. An issue list
+# reads as a queue of commitments with a maintainer's name on the delay; a
+# discussion does not, and the ones worth doing get promoted with GitHub's own
+# "convert to issue". Questions go to Q&A. Nothing reaches roadmap project #9
+# without being put there by hand.
+#
+# These Discussions links 404 until the repo is public — see MVP_SCOPE.md,
+# "The visibility flip", which is also when private vulnerability reporting
+# replaces the SECURITY.md link below.
+blank_issues_enabled: false
+contact_links:
+  - name: Feature idea or suggestion
+    url: https://github.com/shyhunter/PaperNinja/discussions/new?category=ideas
+    about: Suggest something PaperNinja should do. Ideas live in Discussions, not in the issue tracker.
+  - name: Question about using PaperNinja
+    url: https://github.com/shyhunter/PaperNinja/discussions/new?category=q-a
+    about: Ask how to do something. The wiki may already answer it.
+  - name: Security vulnerability
+    url: https://github.com/shyhunter/PaperNinja/blob/main/SECURITY.md
+    about: Read this first. Please do not open a public issue for a security problem.

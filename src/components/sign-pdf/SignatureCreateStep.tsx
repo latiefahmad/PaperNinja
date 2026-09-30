@@ -1,0 +1,253 @@
+import { useState, useCallback } from 'react';
+import { Button } from '@/components/ui/button';
+import { SignatureCanvas } from './SignatureCanvas';
+import { SignatureTyped } from './SignatureTyped';
+import { SignatureUpload } from './SignatureUpload';
+import { ColorPicker } from '@/components/ColorPicker';
+import { DEFAULT_TEXT_COLOR } from '@/lib/colorPresets';
+import { useSavedSignatures } from '@/hooks/useSavedSignatures';
+import type { SavedSignature } from '@/hooks/useSavedSignatures';
+import { t } from '@/i18n';
+
+interface SignatureCreateStepProps {
+  onSignatureSelected: (dataUrl: string) => void;
+  onBack: () => void;
+}
+
+type TabId = 'draw' | 'type' | 'upload';
+
+/**
+ * A function, not a constant: these labels are translated, and a module-level
+ * constant resolves them once at import -- before the locale is known.
+ */
+function tabs(): { id: TabId; label: string }[] {
+  return [
+    { id: 'draw', label: t('signatureCreateStep.draw') },
+    { id: 'type', label: t('signatureCreateStep.type') },
+    { id: 'upload', label: t('signatureCreateStep.upload') },
+  ];
+}
+
+export function SignatureCreateStep({ onSignatureSelected, onBack }: SignatureCreateStepProps) {
+  const { signatures, saveSignature, deleteSignature, isLoading } = useSavedSignatures();
+  const [activeTab, setActiveTab] = useState<TabId>('draw');
+  const [ink, setInk] = useState(DEFAULT_TEXT_COLOR);
+  const [pendingDataUrl, setPendingDataUrl] = useState<string | null>(null);
+  const [pendingType, setPendingType] = useState<SavedSignature['type']>('drawn');
+  const [sigName, setSigName] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleCreated = useCallback((dataUrl: string, type: SavedSignature['type']) => {
+    setPendingDataUrl(dataUrl);
+    setPendingType(type);
+    setSigName(t('signatureCreateStep.signatureN', { n: signatures.length + 1 }));
+  }, [signatures.length]);
+
+  const handleSaveAndProceed = useCallback(async () => {
+    if (!pendingDataUrl) return;
+    setIsSaving(true);
+    try {
+      await saveSignature({
+        name: sigName.trim() || t('signatureCreateStep.signatureN', { n: signatures.length + 1 }),
+        type: pendingType,
+        dataUrl: pendingDataUrl,
+      });
+      onSignatureSelected(pendingDataUrl);
+    } finally {
+      setIsSaving(false);
+      setPendingDataUrl(null);
+    }
+  }, [pendingDataUrl, sigName, pendingType, saveSignature, signatures.length, onSignatureSelected]);
+
+  const handleCancelSave = useCallback(() => {
+    setPendingDataUrl(null);
+    setSigName('');
+  }, []);
+
+  const handleSavedClick = useCallback((sig: SavedSignature) => {
+    // An entry with no image cannot be placed, and handing one on is what sent
+    // the flow to a blank Place step. Hydration should have drawn or dropped
+    // these on load; this is the case it could not draw.
+    if (!sig.dataUrl) return;
+    onSignatureSelected(sig.dataUrl);
+  }, [onSignatureSelected]);
+
+  const handleDelete = useCallback(async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    await deleteSignature(id);
+  }, [deleteSignature]);
+
+  return (
+    /* Two parts, and the split is the point. The content scrolls; the bottom bar
+       does not. Making the whole step scroll fixed Use This Signature sitting
+       below the window and put Back there instead, which is the same bug moved
+       one control along -- reported as the second step having no Back at all.
+       min-h-0 on the scrolling child, or a flex item will not shrink below its
+       content and the overflow never engages. */
+    <div className="flex min-h-0 flex-1 flex-col">
+    <div className="mx-auto flex min-h-0 w-full max-w-2xl flex-1 flex-col gap-6 overflow-y-auto px-6 py-6">
+      {/* Header.
+          Back belongs in the bottom bar with the other twenty-one tools, not
+          beside the title: this was the only step in the app that put it there,
+          so the control moved between steps of the same job. */}
+      <h2 className="text-lg font-semibold text-foreground">{t('signPdf.createOrSelectSignature')}</h2>
+
+      {/* Saved Signatures */}
+      <section>
+        <h3 className="mb-2 text-sm font-medium text-muted-foreground uppercase tracking-wide">
+          {t('signPdf.savedSignatures')}
+        </h3>
+        {isLoading ? (
+          <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
+        ) : signatures.length === 0 ? (
+          <div className="rounded-lg border border-border bg-muted/30 px-4 py-6 text-center">
+            <p className="text-sm text-muted-foreground">{t('signPdf.noSavedSignatures')}</p>
+          </div>
+        ) : (
+          /* Two rows visible, the rest scrolled. Ten saved signatures is the
+             stored maximum and four rows of them pushed the create area off
+             the screen entirely. */
+          <div className="grid max-h-[15.5rem] grid-cols-2 gap-3 overflow-y-auto pe-1 sm:grid-cols-3">
+            {signatures.map((sig) => (
+              <div
+                key={sig.id}
+                onClick={() => handleSavedClick(sig)}
+                className="group relative cursor-pointer rounded-lg border border-border bg-card p-3 transition-colors hover:border-primary hover:bg-primary/5"
+              >
+                <div className="flex h-16 items-center justify-center">
+                  <img
+                    src={sig.dataUrl}
+                    alt={sig.name}
+                    className="max-h-full max-w-full object-contain"
+                  />
+                </div>
+                <p className="mt-1.5 truncate text-center text-xs text-muted-foreground">
+                  {sig.name}
+                </p>
+                <button
+                  type="button"
+                  onClick={(e) => handleDelete(e, sig.id)}
+                  className="absolute end-1.5 top-1.5 hidden rounded p-0.5 text-muted-foreground hover:text-destructive group-hover:block"
+                  title={t('signPdf.deleteSignature')}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* Create New */}
+      <section>
+        <h3 className="mb-2 text-sm font-medium text-muted-foreground uppercase tracking-wide">
+          {t('signPdf.createNew')}
+        </h3>
+
+        {/* Tabs */}
+        <div className="mb-4 flex gap-1 rounded-lg border border-border bg-muted/30 p-1">
+          {tabs().map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                activeTab === tab.id
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Ink — one colour for the whole step, so switching between drawing and
+            typing does not lose the choice. Not offered on Upload: an uploaded
+            image carries its own colours, and a picker there would imply a
+            recolouring that does not happen. */}
+        {activeTab !== 'upload' && (
+          <div className="mb-3 flex items-center gap-3">
+            <span className="text-sm text-muted-foreground">{t('signPdf.ink')}</span>
+            <ColorPicker value={ink} onChange={setInk} />
+          </div>
+        )}
+
+        {/* Tab Content */}
+        {activeTab === 'draw' && (
+          <SignatureCanvas
+            onComplete={(dataUrl) => handleCreated(dataUrl, 'drawn')}
+            onClear={() => {}}
+            color={ink}
+          />
+        )}
+        {activeTab === 'type' && (
+          <SignatureTyped
+            onComplete={(dataUrl) => handleCreated(dataUrl, 'typed')}
+            color={ink}
+          />
+        )}
+        {activeTab === 'upload' && (
+          <SignatureUpload
+            onComplete={(dataUrl) => handleCreated(dataUrl, 'uploaded')}
+          />
+        )}
+      </section>
+
+      {/* Save/Name dialog -- inline after signature created */}
+      {pendingDataUrl && (
+        <div className="rounded-lg border border-primary/30 bg-primary/5 p-4">
+          <p className="mb-3 text-sm font-medium text-foreground">{t('signPdf.nameYourSignature')}</p>
+          <div className="mb-3 flex items-center justify-center rounded-lg bg-white p-3">
+            <img
+              src={pendingDataUrl}
+              alt={t('signPdf.newSignature')}
+              className="max-h-16 max-w-full object-contain"
+            />
+          </div>
+          <input
+            type="text"
+            value={sigName}
+            onChange={(e) => setSigName(e.target.value)}
+            placeholder={t('signPdf.signatureName')}
+            className="mb-3 w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            maxLength={40}
+            autoFocus
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleSaveAndProceed();
+            }}
+          />
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={handleCancelSave}
+              className="rounded-md border border-border px-4 py-2 text-sm text-foreground hover:bg-muted"
+            >
+              {t('common.cancel')}
+            </button>
+            <button
+              type="button"
+              onClick={handleSaveAndProceed}
+              disabled={isSaving}
+              className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-40"
+            >
+              {isSaving ? t('pdfEditor.saving') : t('signatureCreateStep.saveUse')}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+
+      {/* Outside the scroll area, so it is on screen however many signatures
+          are saved. flex-none, or it gives up its height to the content. */}
+      <div className="flex flex-none items-center gap-3 border-t bg-background px-4 py-3">
+        <Button variant="outline" size="sm" data-testid="back-btn" onClick={onBack} className="flex-none">
+          {t('common.back')}
+        </Button>
+      </div>
+    </div>
+  );
+}

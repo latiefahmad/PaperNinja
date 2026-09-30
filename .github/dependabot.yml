@@ -1,0 +1,65 @@
+# Keeps dependencies and — importantly — the SHA-pinned GitHub Actions current.
+# Pinning actions to a commit SHA closes the mutable-tag supply-chain hole, but
+# it also means they stop receiving upstream fixes on their own; Dependabot is
+# what keeps those pins moving. Do not remove one without the other.
+#
+# Tuned for cost. The first run opened 17 PRs at once, and with a private repo
+# every one of those burns billable Actions minutes. So: monthly rather than
+# weekly, a hard cap per ecosystem, and minor/patch bundled into a single PR.
+# Majors are deliberately left ungrouped — they need reading, not a merge button.
+#
+# Paused 2026-08-24 and resumed 2026-09-14. The pause set
+# open-pull-requests-limit to 0 on every ecosystem, which is the documented way
+# to switch version updates off while SECURITY updates keep flowing: the first
+# sweep opened 17 PRs and, on a private repo, burned most of a month's Actions
+# budget. The repo is public now, so Actions are free and that cost is gone.
+#
+# Back to 3 per ecosystem. The grouping and monthly schedule below were already
+# tuned for this and should hold it near four PRs a month.
+#
+# Each PR touching a lockfile invalidates LICENSES/NOTICES.txt by design: the
+# `validate` check hashes both lockfiles against the hash recorded there.
+# Dependabot cannot regenerate it, so .github/workflows/dependabot-notices.yml
+# does, commits the result onto the branch and re-runs the PR checks. If that
+# ever fails, run `node scripts/generate-notices.mjs` and commit onto the branch.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "chore(ci)"
+    groups:
+      actions-minor-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      # Test tooling churns constantly and never ships to users.
+      dev-tooling:
+        dependency-type: development
+        update-types: ["minor", "patch"]
+      prod-minor-patch:
+        dependency-type: production
+        update-types: ["minor", "patch"]
+
+  - package-ecosystem: cargo
+    directory: "/src-tauri"
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      cargo-minor-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]

@@ -1,0 +1,2413 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<title>PaperNinja — offline PDF, image and document tools</title>
+<meta name="description" content="Nineteen tools for PDFs, images and documents that run on your own computer. Compress, convert, sign, redact and edit with no account, no server and no upload step. Free and MIT licensed, for macOS, Windows and Linux.">
+<link rel="canonical" href="https://shyhunter.github.io/PaperNinja/">
+
+<!-- Open Graph and the Twitter card. These have to live in <head>: the page
+     used to carry its <title> in the body, where a parser leaves it and a
+     link-preview crawler will not look, so a link to this site previewed with
+     no image, no title and no description at all.
+
+     og:image is absolute because a relative one is meaningless to a crawler
+     fetching the page from somewhere else, and it is the 1200x630 share card
+     rather than a screenshot, which is the ratio these previews are cropped to. -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="PaperNinja">
+<meta property="og:url" content="https://shyhunter.github.io/PaperNinja/">
+<meta property="og:title" content="PaperNinja — offline PDF, image and document tools">
+<meta property="og:description" content="Nineteen tools for PDFs, images and documents that run on your own computer. Compress, convert, sign, redact and edit with no account, no server and no upload step. Free and MIT licensed, for macOS, Windows and Linux.">
+<meta property="og:image" content="https://shyhunter.github.io/PaperNinja/media/share-card.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="The PaperNinja dashboard, showing its tools for PDFs, images and documents.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="PaperNinja — offline PDF, image and document tools">
+<meta name="twitter:description" content="Nineteen tools for PDFs, images and documents that run on your own computer. Compress, convert, sign, redact and edit with no account, no server and no upload step. Free and MIT licensed, for macOS, Windows and Linux.">
+<meta name="twitter:image" content="https://shyhunter.github.io/PaperNinja/media/share-card.jpg">
+
+<link rel="icon" href="favicon.png" type="image/png" sizes="48x48">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+
+<style>:root{color-scheme:light}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found]){display:none!important}
+  /* Category colour, on the attributes the page actually has. Only the PDF and
+     "other" groups are marked up, so image and document tools are tagged by
+     name — the same split the app's registry makes. */
+  .card[data-kind="image"] .recto { background: var(--sky); color: #141210; }
+  .card[data-kind="doc"] .recto   { background: var(--lilac); color: #141210; }
+  .card[data-kind] .card-desc     { color: #3d3833; }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .card[data-kind] .recto {
+      background: var(--card); color: var(--card-ink); }
+    :root:not([data-theme="light"]) .card[data-kind] .card-desc { color: var(--card-muted); }
+    :root:not([data-theme="light"]) .card[data-kind="image"] .card-icon { color: var(--sky) !important; }
+    :root:not([data-theme="light"]) .card[data-kind="doc"] .card-icon { color: var(--lilac) !important; }
+  }
+  [data-theme="dark"] .card[data-kind] .recto { background: var(--card); color: var(--card-ink); }
+  [data-theme="dark"] .card[data-kind] .card-desc { color: var(--card-muted); }
+</style></head><body>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "PaperNinja",
+  "applicationCategory": "UtilitiesApplication",
+  "operatingSystem": "macOS, Windows, Linux",
+  "url": "https://shyhunter.github.io/PaperNinja/",
+  "downloadUrl": "https://github.com/shyhunter/PaperNinja/releases/latest",
+  "codeRepository": "https://github.com/shyhunter/PaperNinja",
+  "license": "https://opensource.org/licenses/MIT",
+  "isAccessibleForFree": true,
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  },
+  "description": "Nineteen offline tools for PDFs, images and documents. Compress, convert, sign, redact and edit on your own computer, with no account, no server and no upload step.",
+  "featureList": [
+    "Compress",
+    "Merge",
+    "Split",
+    "Rotate",
+    "Crop",
+    "Organise pages",
+    "Page numbers",
+    "Watermark",
+    "Sign",
+    "Redact",
+    "Repair",
+    "Make searchable",
+    "Edit text",
+    "PDF to JPG",
+    "JPG to PDF",
+    "Compress image",
+    "Rotate image",
+    "Convert image",
+    "Convert document"
+  ],
+  "author": {
+    "@type": "Person",
+    "name": "shyhunter"
+  }
+}
+</script>
+
+<link rel="preload" href="fonts/bricolage-var.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/archivo-latin.woff2" as="font" type="font/woff2" crossorigin>
+
+<style>
+  /* Self-hosted rather than pulled from fonts.googleapis.com. A page whose
+     whole claim is that nothing leaves your machine should not hand a third
+     party the IP address of everyone who reads it. Bricolage Grotesque and
+     Archivo and JetBrains Mono are all OFL 1.1; see fonts/README.md for provenance.
+
+     Latin subset only: the five non-ASCII characters this page uses
+     (degree, middle dot, multiplication sign, ellipsis) are all in it. The
+     rightwards arrow is in no Google subset of these families and falls back
+     to a system font here exactly as it did on the CDN.
+
+     One file per family serves several weights, which is how the Google CSS
+     declared them too: these are variable fonts and the browser fetches each
+     file once. */
+  @font-face {
+    font-family: "Bricolage Grotesque";
+    font-style: normal;
+    font-weight: 500;
+    font-display: swap;
+    src: url("fonts/bricolage-var.woff2") format("woff2");
+  }
+  @font-face {
+    font-family: "Bricolage Grotesque";
+    font-style: normal;
+    font-weight: 700;
+    font-display: swap;
+    src: url("fonts/bricolage-var.woff2") format("woff2");
+  }
+  @font-face {
+    font-family: "Bricolage Grotesque";
+    font-style: normal;
+    font-weight: 800;
+    font-display: swap;
+    src: url("fonts/bricolage-var.woff2") format("woff2");
+  }
+  @font-face {
+    font-family: "Archivo";
+    font-style: normal;
+    font-weight: 100 900;
+    font-display: swap;
+    src: url("fonts/archivo-latin-ext.woff2") format("woff2");
+    unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
+  }
+  @font-face {
+    font-family: "Archivo";
+    font-style: normal;
+    font-weight: 100 900;
+    font-display: swap;
+    src: url("fonts/archivo-latin.woff2") format("woff2");
+    unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+  }
+  @font-face {
+    font-family: "JetBrains Mono";
+    font-style: normal;
+    font-weight: 100 800;
+    font-display: swap;
+    src: url("fonts/jetbrains-mono-latin-ext.woff2") format("woff2");
+    unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
+  }
+  @font-face {
+    font-family: "JetBrains Mono";
+    font-style: normal;
+    font-weight: 100 800;
+    font-display: swap;
+    src: url("fonts/jetbrains-mono-latin.woff2") format("woff2");
+    unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+  }
+
+  /* ---------------------------------------------------------------------
+     Drawn surfaces. Mirrors the app: 3px lines, hard offset shadows, and
+     corner radii whose horizontal and vertical values differ so an edge
+     reads as drawn rather than computed.
+     --------------------------------------------------------------------- */
+  .card, .face, figure, blockquote, .panel, .note, table {
+    border: 3px solid var(--rule);
+    border-radius: 22px 8px 26px 10px / 10px 26px 8px 22px;
+    box-shadow: var(--card-shadow);
+    background: var(--plate);
+  }
+  .card:nth-child(4n+2) .face { border-radius: 9px 25px 8px 22px / 22px 8px 26px 9px; }
+  .card:nth-child(4n+3) .face { border-radius: 26px 10px 20px 8px / 8px 22px 10px 26px; }
+  .card:nth-child(4n+4) .face { border-radius: 8px 22px 11px 26px / 26px 10px 22px 8px; }
+
+  a.btn, button, .button, .cta {
+    border: 3px solid var(--rule);
+    border-radius: 12px 5px 14px 6px / 6px 14px 5px 12px;
+    box-shadow: 4px 4px 0 var(--rule);
+    transition: transform .06s linear, box-shadow .06s linear;
+  }
+  a.btn:active, button:active, .button:active, .cta:active {
+    transform: translate(4px, 4px);
+    box-shadow: none;
+  }
+
+  /* The one loud thing on the page, the way yellow is the one loud thing in
+     the app: the primary download. */
+  .cta-primary, a.btn-primary {
+    background: var(--yellow);
+    color: #141210;
+  }
+
+  hr, .rule { border: none; border-top: 3px solid var(--rule); border-radius: 0 0 14px 4px / 0 0 5px 12px; }
+
+  h2 em, h1 em { font-style: normal; background: var(--yellow); color: #141210;
+                 padding: 0 .12em; border-radius: 10px 4px 11px 5px / 5px 11px 4px 10px; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) h2 em,
+  :root:not([data-theme="light"]) h1 em { background: var(--ink); color: var(--paper); }
+}
+[data-theme="dark"] h2 em,
+[data-theme="dark"] h1 em { background: var(--ink); color: var(--paper); }
+</style>
+<style>
+  /* Direction A: "Trim & Bleed".
+     The page presented as a sheet being prepared for print: trim marks, a spec
+     strip, plates with proof captions. Every annotation is a real measurement
+     from the product (A4 in points, the actual tool count, the real network
+     request count), because print marks that carry no information are just
+     decoration wearing a costume. */
+  :root {
+    --paper: #fdf6e8;      /* cool stock, not cream: a green-grey bias */
+    --plate: #fffdf9;
+    --ink: #141210;
+    --ink-soft: #6b645c;
+    --rule: #141210;
+    --process: #141210;    /* one process ink, used for marks and links only */
+    --mark: #141210;
+    /* The dashboard's card, in sRGB. Declared here in the bare :root so it
+       exists in every theme state: a token that is only used and never
+       declared makes border, background and shadow all invalid, which is
+       precisely how these cards came to render as bare text. */
+    --card: #fffdf9;
+    --card-border: #141210;
+    --card-ink: #141210;
+    --card-muted: #6b645c;
+    --card-primary: #f4c423;
+    --card-shadow: 5px 5px 0 #141210;
+    --verso: #f4c423;      /* the reverse of the sheet, in process ink */
+    --verso-ink: #141210;
+    --yellow:#f4c423; --sky:#8fd6f7; --lilac:#c9b6ff; --lime:#b9f069; --coral:#ff8a73;
+  }
+  @media (prefers-color-scheme: dark) {
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+      --paper: #121212;
+      --plate: #1c1c1c;
+      --ink: #ffffff;
+      --ink-soft: #b4b4b4;
+      --rule: #ffffff;
+      --process: #ffffff;
+      --mark: #ffffff;
+      --verso: #1c1c1c;
+      --verso-ink: #ffffff;
+      --card: #1c1c1c;
+      --card-border: #ffffff;
+      --card-ink: #ffffff;
+      --card-muted: #b4b4b4;
+      --card-primary: #ffffff;
+      --card-shadow: 5px 5px 0 #ffffff;
+    }
+}
+  }
+  :root[data-theme="dark"] {
+    --paper: #121212; --plate: #1c1c1c; --ink: #ffffff;
+    --ink-soft: #b4b4b4; --rule: #ffffff; --process: #ffffff; --mark: #ffffff;
+    --card: #1c1c1c;
+    --card-border: #ffffff;
+    --card-ink: #ffffff;
+    --card-muted: #b4b4b4;
+    --card-primary: #ffffff;
+    --card-shadow: 5px 5px 0 #ffffff;
+    --verso: #1c1c1c; --verso-ink: #ffffff;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font: 16px/1.6 "Archivo", -apple-system, BlinkMacSystemFont, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .sheet { max-width: 66rem; margin: 0 auto; padding: 0 clamp(1rem, 4vw, 3.5rem); position: relative; }
+
+  a { color: var(--process); }
+  a:focus-visible, .btn:focus-visible { outline: 2px solid var(--process); outline-offset: 3px; }
+
+  .mono { font-family: "JetBrains Mono", ui-monospace, monospace; }
+
+  /* ── Trim marks ─────────────────────────────────────────── */
+
+  .trim { position: relative; padding: clamp(2.5rem, 6vw, 4.5rem) 0; }
+
+  /* The crop marks moved off the page margin and onto the hero image, which is
+     what crop marks are actually for: they mark where an image gets trimmed. At
+     the page edge they were a 1px hairline against paper, invisible. Against the
+     near-black frame they finally register. Kept on the diagonal, as before. */
+
+  /* ── Free / open source stamp ───────────────────────────── */
+
+  /* A proof stamp, the thing a print shop actually puts on a sheet. Rotated so
+     it reads as applied rather than designed in, and left as real text so it is
+     selectable and reaches a screen reader. It links to the source rather than
+     to the licence, because the source is what makes the privacy claim on this
+     page checkable: that is the point it is making, not the legal terms. */
+  .stamp {
+    position: absolute; top: clamp(3.2rem, 7.5vw, 5.4rem); right: 0;
+    display: block; text-decoration: none; isolation: isolate;
+    transform: rotate(-7deg);
+    padding: .62rem 1.05rem;
+    background: var(--process);
+    color: var(--paper);
+    outline: 2px solid var(--process);
+    outline-offset: 3px;
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: .8rem; font-weight: 500;
+    letter-spacing: .2em; text-transform: uppercase;
+    line-height: 1.45; text-align: center;
+    transition: transform .2s ease;
+  }
+
+  /* Uneven ink, the way a rubber stamp actually prints. Turbulence rather than
+     a pasted-on grunge texture: it is generated, it never repeats, and it sits
+     over the fill only, so the text underneath stays crisp and legible. */
+  .stamp::after {
+    content: ""; position: absolute; inset: 0; z-index: -1;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+    opacity: .22;
+    mix-blend-mode: screen;
+    pointer-events: none;
+  }
+
+  .stamp:hover { transform: rotate(-7deg) scale(1.04); }
+  .stamp:focus-visible { outline-color: var(--ink); outline-offset: 5px; }
+
+  .stamp b { display: block; font-weight: 500; position: relative; }
+  /* The dividing rule real stamps carry between their lines. */
+  .stamp b + b { margin-top: .3rem; padding-top: .3rem; border-top: 1px solid currentColor; }
+
+  /* Absolute placement has nothing to clear on a narrow screen, so it comes
+     back into the flow rather than landing on the headline. */
+  @media (max-width: 46rem) {
+    .stamp {
+      position: static; transform: rotate(-3deg);
+      width: fit-content; margin: 0 0 1.4rem;
+    }
+  }
+
+  /* ── Spec strip ─────────────────────────────────────────── */
+
+  .spec {
+    display: flex; flex-wrap: wrap; gap: .4rem 1.6rem;
+    font-family: "JetBrains Mono", monospace; font-size: .68rem;
+    letter-spacing: .06em; text-transform: uppercase; color: var(--ink-soft);
+    border-block: 1px solid var(--rule); padding: .6rem 0; margin-bottom: 2.5rem;
+  }
+  .spec b { color: var(--ink); font-weight: 500; }
+
+  /* ── Hero ───────────────────────────────────────────────── */
+
+  h1 {
+    font-family: "Bricolage Grotesque", "Archivo", sans-serif;
+    font-weight: 800;
+    font-size: clamp(2.4rem, 8vw, 5.2rem);
+    line-height: 1.18;
+    letter-spacing: -.035em;
+    margin: 0 0 1rem;
+    text-wrap: balance;
+  }
+  h1 em { font-style: normal; color: var(--process); }
+
+  .stand { font-size: clamp(1.02rem, 2.3vw, 1.22rem); color: var(--ink-soft); max-width: 38rem; margin: 0 0 2rem; }
+
+  .btns { display: flex; flex-wrap: wrap; gap: .7rem; align-items: center; }
+  .btn {
+    font-family: "JetBrains Mono", monospace; font-size: .82rem; letter-spacing: .04em;
+    text-transform: uppercase; text-decoration: none;
+    padding: .75rem 1.5rem; border: 1px solid var(--process); color: var(--paper);
+    background: var(--process);
+  }
+  .btn.ghost { background: transparent; color: var(--ink); border-color: var(--rule); }
+  .btn:hover { opacity: .85; }
+
+  /* ── Hero demo ──────────────────────────────────────────── */
+
+  /* Same device frame as the accordion's stage, at hero scale: the two
+     motion elements on the page read as one system rather than two different
+     decisions. The video already carries its own real macOS window chrome
+     (traffic lights, rounded title bar) from how it was screen-captured, so
+     this frame reads as a stage the window sits on, not a second window. */
+  .demo-frame {
+    margin-top: clamp(2rem, 5vw, 3rem);
+    border-radius: 1.4rem;
+    background: #0b0c0e;
+    padding: clamp(.85rem, 2%, 1.3rem);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, .35), 0 24px 48px -20px rgba(0, 0, 0, .55);
+  }
+  .demo {
+    display: block; width: 100%; height: auto;
+    border-radius: .7rem;
+    overflow: hidden;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .06);
+  }
+
+  /* ── Jobs: the accordion and its stage ──────────────────── */
+
+  /* Rules, not cards. Five jobs are a list of alternatives, not a sequence,
+     so they get no numbering: hairlines separate them and the process ink
+     marks which one is open. The stage holds the loop for whichever is. */
+  .jobs {
+    display: grid;
+    gap: clamp(1.5rem, 4vw, 2.6rem);
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+    align-items: start;
+    margin-top: clamp(1.5rem, 4vw, 2.2rem);
+  }
+  @media (max-width: 54rem) { .jobs { grid-template-columns: minmax(0, 1fr); } }
+
+  .job { border-top: 1px solid var(--rule); }
+  .job:last-child { border-bottom: 1px solid var(--rule); }
+
+  .job-head {
+    width: 100%;
+    display: flex; align-items: baseline; gap: .8rem;
+    background: none; border: 0; cursor: pointer;
+    padding: .95rem 0;
+    font-family: "Bricolage Grotesque", "Archivo", sans-serif;
+    font-weight: 700; font-size: 1.02rem; letter-spacing: -.015em;
+    color: var(--ink); text-align: left;
+  }
+  .job-head:hover { color: var(--process); }
+  .job-head:focus-visible { outline: 2px solid var(--process); outline-offset: 3px; }
+  .job[data-open="true"] .job-head { color: var(--process); }
+
+  .job-mark {
+    flex: none; width: .5rem; height: .5rem; margin-top: .1rem;
+    border: 1px solid var(--process); border-radius: 50%;
+    background: transparent;
+    transition: background .18s ease;
+  }
+  .job[data-open="true"] .job-mark { background: var(--process); }
+
+  .job-title { flex: 1; text-wrap: balance; }
+
+  .job-panel { padding: 0 0 1.05rem 1.3rem; }
+  .job[data-open="false"] .job-panel { display: none; }
+  .job-panel p { margin: 0 0 .6rem; color: var(--ink-soft); font-size: .95rem; max-width: 40ch; }
+  .job-panel p:last-child { margin-bottom: 0; }
+
+  .job-stat {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: .74rem; color: var(--process);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ── Stage ── */
+  .stage-wrap { position: sticky; top: 1.5rem; display: flex; flex-direction: column; gap: .7rem; }
+  @media (max-width: 54rem) { .stage-wrap { position: static; } }
+
+  /* The four clips came off four different recording sessions, two with a
+     capture tool's own window chrome baked into the pixels, two without. Fixing
+     that meant giving every one of them a single frame that is drawn once, here,
+     rather than trusting four sources to already agree. A device frame reads as
+     hardware rather than page content, so it holds its own colour in both
+     themes instead of following --plate/--ink -- the same reason a photo of a
+     phone stays a phone under dark mode. */
+  .stage {
+    position: relative;
+    border-radius: 1.1rem;
+    background: #0b0c0e;
+    aspect-ratio: 764 / 480;
+    padding: clamp(.6rem, 2.3%, .95rem);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, .35), 0 16px 32px -16px rgba(0, 0, 0, .5);
+  }
+  .stage-inner {
+    position: relative;
+    width: 100%; height: 100%;
+    border-radius: .55rem;
+    overflow: hidden;
+    background: #f4f4f4;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .06);
+  }
+  .stage video { width: 100%; height: 100%; object-fit: cover; object-position: top center; display: block; }
+
+  .stage-empty {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: .55rem; padding: 1.5rem; text-align: center;
+    background: #f4f4f4;
+  }
+  .stage-empty .rule {
+    width: 3.2rem; height: 0; border-top: 2px dashed #c7c9c6;
+  }
+  .stage-empty p {
+    margin: 0; max-width: 30ch;
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: .72rem; line-height: 1.7; color: #6b6f6c;
+  }
+  .stage-empty strong {
+    display: block; font-weight: 500;
+    letter-spacing: .14em; text-transform: uppercase;
+    font-size: .6rem; color: var(--process);
+  }
+
+  .fpo {
+    position: absolute; top: 1rem; right: 1rem; z-index: 2;
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: .56rem; font-weight: 500;
+    letter-spacing: .16em; text-transform: uppercase;
+    padding: .22rem .42rem;
+    color: var(--verso-ink); background: var(--verso);
+  }
+
+  .stage-cap {
+    margin: 0; font-size: .88rem; color: var(--ink-soft);
+    border-top: 1px solid var(--rule); padding-top: .55rem;
+  }
+  .stage-cap .mono {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ── Sections ───────────────────────────────────────────── */
+
+  /* The divider does the colour work. A 1px hairline was quiet to the point of
+     invisible, and a thick grey bar would just be heavy, so the rule leads
+     with the process ink and runs out into neutral, the way a colour bar sits
+     at the head of a press sheet. It repeats the accent down the page without
+     asking any headline to carry it. */
+  section { padding: 0 0 clamp(2.5rem, 6vw, 4rem); }
+
+  .trim + section::before { margin-top: clamp(1.5rem, 4vw, 2.5rem); }
+
+  section::before {
+    content: "";
+    display: block;
+    height: 5px;
+    margin-bottom: clamp(1.8rem, 4vw, 2.6rem);
+    background: linear-gradient(
+      to right,
+      var(--process) 0 5.5rem,
+      var(--rule) 5.5rem
+    );
+  }
+
+  /* The tool columns are sections for semantics, not for structure. */
+
+  .sig {
+    font-family: "JetBrains Mono", monospace; font-size: .7rem; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--process); margin: 0 0 .55rem;
+    font-weight: 500;
+    display: flex; align-items: center; gap: .55rem;
+  }
+  /* A solid mark, so the colour registers before the text is read. */
+  .sig::before {
+    content: ""; width: 10px; height: 10px; flex: none;
+    background: var(--process);
+  }
+  h2 {
+    font-family: "Bricolage Grotesque", sans-serif; font-weight: 700;
+    font-size: clamp(1.5rem, 3.4vw, 2.1rem); letter-spacing: -.025em;
+    margin: 0 0 .6rem; text-wrap: balance;
+  }
+  /* Same treatment as the hero's "your": one word per heading in the process
+     ink. One word, never a phrase: the emphasis stops meaning anything the
+     moment it covers half the line. */
+  h2 em { font-style: normal; color: var(--process); }
+  .lede { color: var(--ink-soft); max-width: 40rem; margin: 0 0 2rem; }
+
+  /* ── Plates ─────────────────────────────────────────────── */
+
+  .plates { display: grid; gap: 1.6rem; grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr)); }
+  figure { margin: 0; }
+  figure img { width: 100%; height: auto; display: block; background: var(--plate); border: 1px solid var(--rule); }
+  figcaption {
+    font-family: "JetBrains Mono", monospace; font-size: .68rem; letter-spacing: .05em;
+    text-transform: uppercase; color: var(--ink-soft);
+    display: flex; justify-content: space-between; gap: 1rem; padding-top: .5rem;
+  }
+
+  /* ── Claims ─────────────────────────────────────────────── */
+  /*
+     The same card as the tools below (the app's own border, radius, surface,
+     shadow and hover lift) at a larger size, because these two carry a
+     paragraph rather than a line. Deliberately not flipped: the tool cards hide
+     a detail worth going to find, whereas the payoff line here is the whole
+     point and hiding it behind a hover would be a joke at the reader's expense.
+  */
+
+  .claims {
+    display: grid; gap: .75rem;
+    grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr));
+    margin-bottom: 1.9rem;
+  }
+
+  /* Only one .net-panel is left on the page now that the Measured section is
+     gone, so it can safely take the same hover the two claim cards above it
+     already have -- same lift, same border, same easing -- instead of reading
+     as the one card in the row that does not respond. */
+  .net-panel {
+    background: var(--card);
+    color: var(--card-ink);
+    border: 1px solid var(--card-border);
+    border-radius: .75rem;
+    box-shadow: var(--card-shadow);
+    padding: clamp(1.4rem, 3vw, 1.9rem);
+    margin: 0 0 1.9rem;
+    transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+  }
+  .net-panel:hover {
+    transform: translateY(-2px) scale(1.01);
+    border-color: var(--process);
+  }
+
+  .net-panel > .lede { color: var(--card-muted); }
+  .net-panel > .lede strong { color: var(--card-ink); }
+  .net-panel > .lede:last-of-type { margin-bottom: 1.2rem; }
+  .net-panel .scroll { margin: 0; }
+
+  .net-table th:nth-child(1), .net-table td:nth-child(1) { width: 22%; }
+  .net-table th:nth-child(2), .net-table td:nth-child(2) { width: 40%; }
+  .net-table th:nth-child(3), .net-table td:nth-child(3) { width: 38%; }
+  .net-table .mono { overflow-wrap: break-word; word-break: break-word; }
+
+  .claim {
+    background: var(--card);
+    color: var(--card-ink);
+    border: 1px solid var(--card-border);
+    border-radius: .75rem;
+    box-shadow: var(--card-shadow);
+    padding: clamp(1.4rem, 3vw, 1.9rem);
+    display: flex; flex-direction: column; gap: .75rem;
+    transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+  }
+  .claim:hover {
+    transform: translateY(-2px) scale(1.01);
+    border-color: var(--process);
+  }
+
+  .claim-icon { color: var(--card-primary); line-height: 0; }
+  .claim-icon svg { width: 1.75rem; height: 1.75rem; }
+
+  /* ── Install steps ──────────────────────────────────────── */
+
+  /* The steps ran the full 66rem, which is a punishing measure for prose this
+     detailed -- the macOS panel most of all. Giving the mark a column of its own
+     pulls the text back to something readable and fills the page's plainest
+     section at the same time: the layout is the reason, the ninja is the bonus. */
+  .install {
+    display: grid; gap: clamp(1.5rem, 4vw, 3rem);
+    grid-template-columns: minmax(0, 1fr) clamp(12rem, 21vw, 18rem);
+    align-items: start;
+  }
+  /* Every bare `figure` gets the drawn frame, which is right for the plates and
+     wrong here: this is a mark sitting on the paper, like the one in the header,
+     not a plate of content. Unframed, the halftone reads as ink on the sheet. */
+  .install-art {
+    margin: 0; position: sticky; top: 2rem;
+    border: none; box-shadow: none; background: none; border-radius: 0;
+    /* A square box the three take turns in. They are 722x691, 760x760 and
+       706x699, so without it the column would resize every time you changed
+       tab and the steps beside it would jump. */
+    aspect-ratio: 1 / 1;
+  }
+  /* The plates section styles every `figure img` as a framed plate, cropped to
+     16/10 over a solid ground -- correct there, wrong for a transparent mark,
+     which came out as an empty bordered box. This one opts out of all of it. */
+  .install-art img {
+    width: 100%; height: 100%; display: block;
+    aspect-ratio: auto !important;
+    object-fit: contain;
+    background: none !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+  }
+  /* Pure black ink on a transparent ground, so inverting for dark is exact and
+     costs no second file. */
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .install-art img { filter: invert(1); }
+  }
+  [data-theme="dark"] .install-art img { filter: invert(1); }
+  /* Below this there is no room for a second column, and decoration should not
+     be what pushes the instructions down a phone screen. */
+  @media (max-width: 56rem) {
+    .install { grid-template-columns: minmax(0, 1fr); }
+    .install-art { display: none; }
+  }
+
+  .os-tabs { display: flex; flex-wrap: wrap; gap: .4rem; margin: 0 0 1.4rem; }
+  .os-tab {
+    font-family: "JetBrains Mono", monospace; font-size: .74rem; letter-spacing: .05em;
+    text-transform: uppercase; cursor: pointer;
+    padding: .5rem .9rem; border: 1px solid var(--rule); border-radius: 2px;
+    background: transparent; color: var(--ink-soft);
+  }
+  .os-tab[aria-selected="true"] { border-color: var(--process); color: var(--process); font-weight: 500; }
+  .os-tab:focus-visible { outline: 2px solid var(--process); outline-offset: 2px; }
+
+  .steps { list-style: none; margin: 0; padding: 0; counter-reset: step; }
+  .step {
+    position: relative; counter-increment: step;
+    padding: 0 0 1.5rem 2.9rem; border-inline-start: 1px solid var(--rule);
+    margin-inline-start: .85rem;
+  }
+  .step:last-child { border-inline-start-color: transparent; padding-bottom: 0; }
+  .step::before {
+    content: counter(step);
+    position: absolute; inset-inline-start: -.85rem; top: -.15rem;
+    width: 1.7rem; height: 1.7rem; border-radius: 50%;
+    display: grid; place-items: center;
+    background: var(--paper); border: 1px solid var(--rule);
+    font-family: "JetBrains Mono", monospace; font-size: .74rem; color: var(--ink);
+  }
+  .step h3 {
+    font-family: "Bricolage Grotesque", sans-serif; font-weight: 700;
+    font-size: 1.02rem; margin: 0 0 .2rem; letter-spacing: -.015em;
+  }
+  .step p { margin: 0; font-size: .93rem; color: var(--ink-soft); line-height: 1.55; }
+
+  .cmd {
+    display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+    margin-top: .6rem; padding: .7rem .85rem;
+    background: var(--plate); border: 1px solid var(--rule); border-radius: 3px;
+  }
+  .cmd code {
+    font-family: "JetBrains Mono", monospace; font-size: .82rem; color: var(--ink);
+    overflow-wrap: anywhere;
+  }
+  .cmd button {
+    font-family: "JetBrains Mono", monospace; font-size: .68rem; letter-spacing: .05em;
+    text-transform: uppercase; cursor: pointer; flex: none;
+    padding: .35rem .6rem; border: 1px solid var(--rule); border-radius: 2px;
+    background: var(--paper); color: var(--ink-soft);
+  }
+  .cmd button:hover { border-color: var(--process); color: var(--process); }
+
+  .net-headline { display: flex; align-items: center; gap: .85rem; margin-bottom: .9rem; }
+  .net-headline .claim-icon svg { width: 2rem; height: 2rem; }
+  .net-claim {
+    font-family: "Bricolage Grotesque", sans-serif; font-weight: 800;
+    font-size: clamp(1.3rem, 2.8vw, 1.65rem); line-height: 1.08;
+    letter-spacing: -.03em; margin: 0; color: var(--card-ink);
+  }
+
+  .claim h3 {
+    font-family: "Bricolage Grotesque", sans-serif; font-weight: 800;
+    font-size: clamp(1.3rem, 2.8vw, 1.65rem); line-height: 1.08;
+    letter-spacing: -.03em; margin: 0; text-wrap: balance;
+  }
+
+  .claim p { margin: 0; color: var(--card-muted); font-size: .93rem; line-height: 1.55; }
+
+  /* The payoff, set apart by a rule in the process ink rather than by weight
+     alone: it is the sentence each card exists to deliver. */
+  .claim-payoff {
+    margin-top: auto; padding-top: .85rem;
+    border-top: 1px solid var(--card-border);
+    color: var(--card-ink) !important; font-weight: 600;
+  }
+
+  /* ── Tool cards ─────────────────────────────────────────── */
+  /*
+     Geometry, spacing and hover behaviour are the dashboard's own, translated
+     from its Tailwind classes: rounded-xl at .75rem, p-5 at 1.25rem, gap-3, a
+     1.75rem primary-tinted icon over a 14px medium title, and the same 1.02
+     scale with a 2px rise on hover. Reusing them makes this grid a fair
+     preview of the screen you land on rather than a designer's idea of it,
+     and the icons are the ones the tool registry actually names.
+  */
+
+  .cards {
+    display: grid; gap: .75rem;
+    grid-template-columns: repeat(auto-fill, minmax(12.5rem, 1fr));
+  }
+
+  .card {
+    all: unset;
+    display: block;
+    height: 10.5rem;
+    cursor: pointer;
+    perspective: 1000px;
+  }
+  .card:focus-visible { outline: none; }
+  .card:focus-visible .face { box-shadow: 0 0 0 2px var(--card-primary); }
+
+  .card-inner {
+    position: relative; display: block; height: 100%;
+    transform-style: preserve-3d;
+    transition: transform .55s cubic-bezier(.2, .7, .2, 1);
+  }
+  .card:hover .card-inner,
+  .card:focus-visible .card-inner { transform: rotateY(180deg); }
+
+  .face {
+    position: absolute; inset: 0;
+    backface-visibility: hidden; -webkit-backface-visibility: hidden;
+    border: 1px solid var(--card-border);
+    border-radius: .75rem;
+    padding: 1.25rem;
+    display: flex; flex-direction: column; align-items: center; gap: .75rem;
+    text-align: center;
+    transition: transform .2s ease, box-shadow .2s ease;
+  }
+
+  .recto {
+    background: var(--card); color: var(--card-ink);
+    box-shadow: var(--card-shadow);
+    justify-content: flex-start;
+  }
+  .card:hover .recto { transform: translateY(-2px) scale(1.02); }
+
+  .card-icon { color: var(--card-primary); flex: none; line-height: 0; }
+  .card-icon svg { width: 1.75rem; height: 1.75rem; }
+
+  .card-name { font-size: .875rem; font-weight: 500; line-height: 1.3; }
+
+  /* text-xs muted, clamped to two lines: the dashboard's own treatment. */
+  .card-desc {
+    font-size: .75rem; line-height: 1.35; color: var(--card-muted);
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .card-how-label {
+    font-family: "JetBrains Mono", monospace; font-size: .58rem;
+    letter-spacing: .14em; text-transform: uppercase; opacity: .75;
+  }
+
+  .verso {
+    background: var(--verso); color: var(--verso-ink);
+    transform: rotateY(180deg);
+    border-color: var(--verso);
+    justify-content: center;
+  }
+
+  .card-how { font-size: .78rem; line-height: 1.45; margin: 0; }
+
+
+  .dl-note {
+    font-family: "JetBrains Mono", monospace; font-size: .72rem; letter-spacing: .04em;
+    color: var(--ink-soft); margin: .9rem 0 0;
+  }
+
+  /* Every build, as cards under the demo. The card for the machine we think
+     this is takes the yellow fill and a rotated stamp -- the same move the
+     Free / Open Source badge makes, so the recommendation reads as something
+     pressed onto the sheet rather than a label that can wrap and break. */
+  .get { margin-top: clamp(1.8rem, 4vw, 2.6rem); scroll-margin-top: 1.2rem; }
+
+  .get-head {
+    display: flex; flex-wrap: wrap; align-items: baseline;
+    gap: .2rem .9rem; margin: 0 0 1rem;
+  }
+  .get-head h2 { font-size: clamp(1.2rem, 2.6vw, 1.6rem); margin: 0; }
+  .get-head p {
+    margin: 0; font-size: .72rem; letter-spacing: .04em;
+    text-transform: uppercase; color: var(--ink-soft);
+  }
+
+  .get-cards {
+    display: grid; gap: 1rem; align-items: start;
+    grid-template-columns: repeat(auto-fit, minmax(14.5rem, 1fr));
+  }
+
+  .get-card {
+    position: relative;
+    background: var(--card); color: var(--card-ink);
+    padding: 1.15rem 1.25rem 1.25rem;
+    display: flex; flex-direction: column; gap: .85rem;
+  }
+  .get-card h3 {
+    font-family: "Bricolage Grotesque", sans-serif; font-weight: 800;
+    font-stretch: 90%; font-size: 1.2rem; letter-spacing: -.02em; margin: 0;
+  }
+  .get-card ul { list-style: none; margin: 0; padding: 0; display: grid; gap: .5rem; }
+
+  /* Yellow is constant across both themes here, so the fill and its ink are
+     stated outright rather than left to the theme tokens. */
+  .get-card[data-here] { background: var(--yellow); color: #141210; }
+
+  .get-stamp { display: none; }
+  .get-card[data-here] .get-stamp {
+    display: block;
+    position: absolute; top: -.85rem; inset-inline-end: -.6rem; z-index: 2;
+    transform: rotate(-6deg);
+    /* Constant across both themes, the way the yellow is. It is a label stuck
+       onto the card, so it keeps its own paper: var(--plate) flipped to near
+       black in dark mode and left black ink on a black ground, invisible. */
+    background: #fffdf9; color: #141210;
+    border: 3px solid #141210;
+    border-radius: 11px 4px 12px 5px / 5px 12px 4px 11px;
+    box-shadow: 3px 3px 0 #141210;
+    padding: .32rem .5rem;
+    font-family: "Bricolage Grotesque", sans-serif;
+    font-weight: 800; font-stretch: 90%; font-size: .58rem;
+    letter-spacing: .1em; text-transform: uppercase;
+    line-height: 1.15; text-align: center;
+  }
+
+  .get-card a {
+    display: flex; flex-direction: column; gap: .1rem;
+    padding: .6rem .7rem; text-decoration: none;
+    background: var(--plate); color: var(--ink);
+    border: 3px solid var(--rule);
+    border-radius: 12px 5px 14px 6px / 6px 14px 5px 12px;
+    box-shadow: 3px 3px 0 var(--rule);
+    transition: transform .06s linear, box-shadow .06s linear;
+  }
+  .get-card li:nth-child(2) a { border-radius: 6px 14px 5px 12px / 12px 5px 14px 6px; }
+  .get-card a b { font-weight: 500; font-size: .92rem; }
+  .get-card a span {
+    font-family: "JetBrains Mono", monospace; font-size: .64rem;
+    letter-spacing: .04em; color: var(--ink-soft);
+  }
+  .get-card a:hover { transform: translate(-1px, -1px); box-shadow: 5px 5px 0 var(--rule); }
+  .get-card a:active { transform: translate(3px, 3px); box-shadow: none; }
+  .get-card a:focus-visible { outline: 3px solid var(--rule); outline-offset: 3px; }
+
+  @media (max-width: 30rem) {
+    .get-card[data-here] .get-stamp { inset-inline-end: .5rem; top: -.75rem; }
+  }
+
+  /* The button jumps rather than downloads on macOS and Linux, so it says so. */
+  .btn[data-jump]::after { content: " \2193"; }
+
+  @media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+
+  .filters { display: flex; flex-wrap: wrap; gap: .4rem; margin: 0 0 .8rem; }
+  .filter {
+    font-family: "JetBrains Mono", monospace; font-size: .74rem; letter-spacing: .05em;
+    text-transform: uppercase; cursor: pointer;
+    padding: .5rem .9rem; border: 1px solid var(--rule); border-radius: 2px;
+    background: transparent; color: var(--ink-soft);
+  }
+  .filter b { font-weight: 500; opacity: .7; margin-inline-start: .3rem; }
+  .filter[aria-pressed="true"] { border-color: var(--process); color: var(--process); }
+  .filter[aria-pressed="true"] b { opacity: 1; }
+  .filter:focus-visible { outline: 2px solid var(--process); outline-offset: 2px; }
+  .filter-status {
+    font-family: "JetBrains Mono", monospace; font-size: .7rem; letter-spacing: .04em;
+    color: var(--ink-soft); margin: 0 0 1.4rem;
+  }
+  .card[hidden] { display: none !important; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .card-inner, .face { transition: none; }
+    .card:hover .card-inner,
+    .card:focus-visible .card-inner { transform: none; }
+    .card:hover .recto { transform: none; }
+    .card:hover .recto,
+    .card:focus-visible .recto { visibility: hidden; }
+    .verso { transform: none; visibility: hidden; }
+    .card:hover .verso,
+    .card:focus-visible .verso { visibility: visible; }
+  }
+
+  /* ── Table ──────────────────────────────────────────────── */
+
+  .scroll { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; min-width: 32rem; font-size: .92rem; }
+  th, td { text-align: start; padding: .75rem .8rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th {
+    font-family: "JetBrains Mono", monospace; font-size: .66rem; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--ink-soft); font-weight: 500;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  td .mono { font-size: .85rem; }
+
+  /* ── Support ────────────────────────────────────────────── */
+  /*
+     Same card as everywhere else, but as links rather than buttons: these go
+     somewhere, and a card that navigates should be an anchor so it opens in a
+     new tab, copies its address, and reads as a link to a screen reader.
+  */
+
+  .support { display: grid; gap: .75rem; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); }
+
+  .support-card {
+    text-decoration: none; color: var(--card-ink);
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: .75rem;
+    box-shadow: var(--card-shadow);
+    padding: 1.4rem 1.5rem;
+    display: flex; flex-direction: column; gap: .7rem;
+    transition: transform .2s ease, border-color .2s ease;
+  }
+  .support-card:hover { transform: translateY(-2px) scale(1.01); border-color: var(--process); }
+
+  .support-icon { color: var(--card-primary); line-height: 0; }
+  .support-icon svg { width: 1.6rem; height: 1.6rem; }
+
+  .support-card h3 {
+    font-family: "Bricolage Grotesque", sans-serif; font-weight: 700;
+    font-size: 1.15rem; letter-spacing: -.02em; margin: 0;
+  }
+  .support-card p { margin: 0; font-size: .9rem; color: var(--card-muted); line-height: 1.5; }
+
+  .support-go {
+    margin-top: auto; padding-top: .3rem;
+    font-family: "JetBrains Mono", monospace; font-size: .68rem;
+    letter-spacing: .1em; text-transform: uppercase; color: var(--process);
+  }
+
+  /* ── Notes ──────────────────────────────────────────────── */
+
+  .notes { display: grid; gap: 0; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); }
+  .notes > div { padding: 1.1rem 1.3rem 1.1rem 0; border-top: 1px solid var(--rule); }
+  .notes h3 { font-size: .98rem; margin: 0 0 .35rem; font-family: "Bricolage Grotesque", sans-serif; font-weight: 700; }
+  .notes p { margin: 0; font-size: .9rem; color: var(--ink-soft); }
+
+  footer {
+    border-top: 5px solid var(--process); margin-top: 2rem;
+    padding: 1.5rem 0 4rem; display: flex; flex-wrap: wrap; gap: .6rem 1.8rem;
+    justify-content: space-between;
+    font-family: "JetBrains Mono", monospace; font-size: .7rem;
+    letter-spacing: .05em; text-transform: uppercase; color: var(--ink-soft);
+  }
+  footer nav { display: flex; flex-wrap: wrap; gap: 1.4rem; }
+
+
+  /* ── Drawn surfaces ─────────────────────────────────────────
+     The same rules the app ships: 3px lines, hard offset shadows, and corner
+     radii whose horizontal and vertical values differ so an edge reads as
+     drawn rather than computed. Four variants dealt out by position, so a
+     grid never looks like one shape stamped twenty times. */
+  .face, figure img, .claim, .net-panel, .support-card, .cmd, .stage, .demo-frame,
+  .get-card {
+    border: 3px solid var(--rule) !important;
+    border-radius: 22px 8px 26px 10px / 10px 26px 8px 22px !important;
+    box-shadow: var(--card-shadow) !important;
+  }
+  /* Three cards side by side, so they take three different corners -- the same
+     reason the tool grid deals its radii out by position. */
+  .get-card:nth-child(2) { border-radius: 9px 25px 8px 22px / 22px 8px 26px 9px !important; }
+  .get-card:nth-child(3) { border-radius: 26px 10px 20px 8px / 8px 22px 10px 26px !important; }
+  .card:nth-child(4n+2) .face { border-radius: 9px 25px 8px 22px / 22px 8px 26px 9px !important; }
+  .card:nth-child(4n+3) .face { border-radius: 26px 10px 20px 8px / 8px 22px 10px 26px !important; }
+  .card:nth-child(4n+4) .face { border-radius: 8px 22px 11px 26px / 26px 10px 22px 8px !important; }
+
+  .btn, .os-tab, .filter, .cmd button {
+    border: 3px solid var(--rule) !important;
+    border-radius: 12px 5px 14px 6px / 6px 14px 5px 12px !important;
+    box-shadow: 4px 4px 0 var(--rule) !important;
+    transition: transform .06s linear, box-shadow .06s linear !important;
+  }
+  .btn:active, .os-tab:active, .filter:active, .cmd button:active {
+    transform: translate(4px,4px) !important; box-shadow: none !important;
+  }
+
+  /* The one loud thing on the page, the way yellow is the one loud thing in
+     the app: the primary download. */
+  .btn { background: var(--yellow); color: #141210; }
+  .btn.ghost { background: var(--plate); color: var(--ink); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .btn { background: var(--yellow); color: #141210; }
+}
+[data-theme="dark"] .btn { background: var(--yellow); color: #141210; }
+
+  /* Emphasis is a highlighter mark, not a colour change. */
+  h1 em, h2 em {
+    font-style: normal; color: #141210; background: var(--yellow);
+    padding: 0 .12em;
+    border-radius: 10px 4px 11px 5px / 5px 11px 4px 10px;
+  }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) h1 em,
+  :root:not([data-theme="light"]) h2 em { background:#fff; color:#121212; }
+}
+[data-theme="dark"] h1 em,
+[data-theme="dark"] h2 em { background:#fff; color:#121212; }
+
+  /* Section rules and the stamp become drawn marks too. */
+  section::before { background: var(--rule) !important; height: 3px !important;
+                    border-radius: 0 0 14px 4px / 0 0 5px 12px; }
+  footer { border-top: 3px solid var(--rule) !important; }
+  .stamp { background: var(--yellow) !important; color: #141210 !important;
+           outline: 3px solid var(--rule) !important; }
+  .spec { border-block: 3px solid var(--rule) !important; }
+  .job { border-top: 2px solid var(--rule) !important; }
+  .job:last-child { border-bottom: 2px solid var(--rule) !important; }
+
+  /* Category colour, the way the dashboard carries it. */
+  .card[data-cat="image"] .recto { background: var(--sky); color:#141210; }
+  .card[data-cat="doc"] .recto   { background: var(--lilac); color:#141210; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .card[data-cat="image"] .recto,
+  :root:not([data-theme="light"]) .card[data-cat="doc"] .recto { background: var(--card); color: var(--card-ink); }
+}
+[data-theme="dark"] .card[data-cat="image"] .recto,
+[data-theme="dark"] .card[data-cat="doc"] .recto { background: var(--card); color: var(--card-ink); }
+
+  /* The mark, at the head of the sheet. */
+  .ninja { display:flex; align-items:center; gap:.9rem; padding-top:1.6rem; }
+  .ninja svg { width:44px; height:44px; color:var(--ink); flex:none; }
+  .ninja b { font-family:"Bricolage Grotesque",sans-serif; font-weight:800;
+             font-stretch:90%; font-size:1.25rem; letter-spacing:-.02em; }
+
+
+  /* ── The stamp, rebuilt ──────────────────────────────────────
+     Not a rubber stamp any more: the same drawn frame every card on the page
+     uses, holding the mark with the licence underneath. Kept rotated so it
+     still reads as applied to the sheet rather than laid out on it. */
+  .stamp {
+    display: flex !important; flex-direction: column; align-items: center; gap: .15rem;
+    padding: 1.1rem 1.5rem !important;
+    background: var(--yellow) !important;
+    color: #141210 !important;
+    border: 4px solid var(--rule) !important;
+    outline: none !important;
+    box-shadow: 7px 7px 0 var(--rule) !important;
+    border-radius: 22px 8px 26px 10px / 10px 26px 8px 22px !important;
+    transform: rotate(-6deg);
+    font-family: "Bricolage Grotesque", sans-serif !important;
+    font-size: 1rem !important; font-weight: 800; font-stretch: 90%;
+    letter-spacing: .04em !important; text-transform: uppercase;
+    line-height: 1.15 !important;
+  }
+  .stamp::after { content: none !important; }        /* the ink-noise texture is gone with it */
+  .stamp-mark { width: 68px; height: 68px; color: #141210; display: block; margin-bottom: .35rem; }
+  .stamp b { font-weight: 800 !important; }
+  .stamp b + b { margin-top: 0 !important; padding-top: 0 !important; border-top: none !important; }
+  .stamp:hover { transform: rotate(-6deg) translate(-2px,-2px); box-shadow: 10px 10px 0 var(--rule) !important; }
+  .stamp:active { transform: rotate(-6deg) translate(4px,4px); box-shadow: none !important; }
+
+  /* ── 2 + 3. one yellow, on both themes ───────────────────────
+     Yellow is the brand mark, not a light-mode accent: swapping it for white in
+     dark made the two themes tell different stories about what matters. */
+  h1 em, h2 em,
+  .btn, .os-tab[aria-selected="true"], .filter[aria-pressed="true"]
+  { background: var(--yellow) !important;
+    color: #141210 !important; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) h1 em,
+  :root:not([data-theme="light"]) h2 em,
+  :root:not([data-theme="light"]) .btn {
+    background: var(--yellow) !important;
+    color: #141210 !important;
+  }
+}
+[data-theme="dark"] h1 em,
+[data-theme="dark"] h2 em,
+[data-theme="dark"] .btn {
+    background: var(--yellow) !important;
+    color: #141210 !important;
+  }
+  .btn.ghost { background: var(--plate) !important; color: var(--ink) !important; }
+  .btn.ghost:active, .os-tab:active, .filter:active, .cmd button:active {
+    background: var(--yellow) !important; color: #141210 !important;
+  }
+  .job[data-open="true"] .job-head { color: var(--ink) !important; }
+  .job[data-open="true"] .job-mark { background: var(--yellow) !important; border-color: var(--rule) !important; }
+
+  /* The highlight is a mark over the words, so it needs to breathe rather than
+     bleed into the line above. */
+  h1 em, h2 em {
+    padding: .04em .16em !important;
+    box-decoration-break: clone; -webkit-box-decoration-break: clone;
+  }
+
+
+  /* The section signature mark was the old process ink too — it is an accent,
+     so it takes the accent colour rather than becoming a black or white square. */
+  .sig::before { background: var(--yellow) !important; border: 2px solid var(--rule); }
+  .sig { color: var(--ink) !important; }
+  .job-stat, .support-go, .stage-empty strong { color: var(--ink) !important; }
+
+
+  /* ── The badge, at the size it deserves ──────────────────────
+     It is the only thing on the page carrying the mark, the name and the
+     licence at once, so it stops being a marginal note and becomes the second
+     thing you look at after the headline. */
+  .stamp {
+    padding: 1.5rem 2rem 1.35rem !important;
+    border-width: 5px !important;
+    box-shadow: 9px 9px 0 var(--rule) !important;
+    font-size: 1.35rem !important;
+    gap: .1rem;
+    max-width: 17rem;
+  }
+  .stamp-word {
+    font-size: 1.7rem; line-height: 1.05;
+    letter-spacing: -.02em; text-transform: none;
+    margin-bottom: .55rem;
+  }
+  .stamp-mark {
+    width: 112px !important; height: 112px !important;
+    margin-bottom: .5rem !important;
+  }
+  /* The licence lines sit under a drawn rule, the way a stamp carries a
+     dividing line between what it names and what it certifies. */
+  .stamp b + b.stamp-line { margin-top: .35rem !important; padding-top: .4rem !important;
+                            border-top: 3px solid #141210 !important; }
+  .stamp:hover { box-shadow: 12px 12px 0 var(--rule) !important; }
+
+  /* At the size it is now it cannot hang in the margin on a narrow screen. */
+  @media (max-width: 62rem) {
+    .stamp { position: static !important; transform: rotate(-3deg);
+             margin: 0 0 1.6rem !important; }
+  }
+
+
+  /* Inline links in prose are marked the same way a heading's key word is:
+     highlighted rather than recoloured, so the accent means one thing on this
+     page instead of two. Buttons, cards and the badge are excluded — they carry
+     their own frame and would end up yellow-on-yellow. */
+  .stand a, .lede a, p a:not(.btn):not(.stamp):not(.support-card),
+  .job-panel a, .notes a, td a {
+    background: var(--yellow);
+    color: #141210;
+    text-decoration: none;
+    padding: .04em .18em;
+    border-radius: 10px 4px 11px 5px / 5px 11px 4px 10px;
+    box-decoration-break: clone; -webkit-box-decoration-break: clone;
+    box-shadow: 2px 2px 0 var(--rule);
+  }
+  .stand a:hover, .lede a:hover, p a:not(.btn):not(.stamp):not(.support-card):hover,
+  .job-panel a:hover, .notes a:hover, td a:hover { box-shadow: 3px 3px 0 var(--rule); }
+
+
+  /* ── Install steps, drawn ────────────────────────────────────
+     The numbers were perfect circles on a 1px straight rule — the two most
+     machine-made shapes left on the page. */
+  .step::before {
+    width: 2.4rem !important; height: 2.4rem !important;
+    inset-inline-start: -1.2rem !important;
+    border: 3px solid var(--rule) !important;
+    border-radius: 13px 5px 15px 6px / 6px 15px 5px 13px !important;
+    background: var(--yellow) !important;
+    color: #141210 !important;
+    box-shadow: 3px 3px 0 var(--rule);
+    font-family: "Bricolage Grotesque", sans-serif !important;
+    font-weight: 800 !important; font-size: .95rem !important;
+  }
+  .step:nth-child(2)::before { border-radius: 6px 15px 5px 13px / 13px 5px 15px 6px !important; }
+  .step:nth-child(3)::before { border-radius: 15px 6px 13px 5px / 5px 13px 6px 15px !important; }
+  .step:nth-child(4)::before { border-radius: 5px 13px 6px 15px / 15px 6px 13px 5px !important; }
+
+  .step {
+    border-inline-start: none !important;
+    margin-inline-start: 1.2rem !important;
+    padding-inline-start: 2.4rem !important;
+  }
+  /* The connector is a mask over the rule colour, not a coloured image, so the
+     one asset works on both themes without a second copy. */
+  .step::after {
+    content: ""; position: absolute;
+    inset-inline-start: -3px; top: 2.2rem; bottom: -.2rem; width: 4px;
+    background: var(--rule);
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%274%27%20height%3D%2764%27%20viewBox%3D%270%200%204%2064%27%3E%3Cpath%20d%3D%27M2.1%200%20C0.9%2011%203.2%2021%202%2032%20C0.8%2043%203.1%2053%201.9%2064%27%20stroke%3D%27%23000%27%20stroke-width%3D%272.4%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27%2F%3E%3C%2Fsvg%3E"); mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%274%27%20height%3D%2764%27%20viewBox%3D%270%200%204%2064%27%3E%3Cpath%20d%3D%27M2.1%200%20C0.9%2011%203.2%2021%202%2032%20C0.8%2043%203.1%2053%201.9%2064%27%20stroke%3D%27%23000%27%20stroke-width%3D%272.4%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27%2F%3E%3C%2Fsvg%3E");
+    -webkit-mask-repeat: repeat-y; mask-repeat: repeat-y;
+    -webkit-mask-size: 4px 64px; mask-size: 4px 64px;
+  }
+  .step:last-child::after { content: none; }
+
+
+  /* ── Every rule on the page is drawn ─────────────────────────
+     A horizontal stroke that wanders, tiled along the line. Where the rule is
+     its own element or a free pseudo-element it is a mask over var(--rule), so
+     one asset serves both themes. Table cells cannot take a mask without
+     masking their contents, so those paint the stroke directly and swap it by
+     theme — the only place two copies are needed. */
+  .drawn-rule, footer::before, .spec::before, .spec::after, .job::before,
+  .job:last-child::after, .notes > div::before, .stage-cap::before,
+  .claim-payoff::before, hr {
+    content: ""; display: block; height: 6px; width: 100%;
+    background: var(--rule);
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2796%27%20height%3D%276%27%20viewBox%3D%270%200%2096%206%27%3E%3Cpath%20d%3D%27M0%203.4%20C16%201.6%2032%204.6%2048%203%20C64%201.4%2080%204.4%2096%202.8%27%20stroke%3D%27%23000%27%20stroke-width%3D%272.6%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27%2F%3E%3C%2Fsvg%3E"); mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2796%27%20height%3D%276%27%20viewBox%3D%270%200%2096%206%27%3E%3Cpath%20d%3D%27M0%203.4%20C16%201.6%2032%204.6%2048%203%20C64%201.4%2080%204.4%2096%202.8%27%20stroke%3D%27%23000%27%20stroke-width%3D%272.6%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27%2F%3E%3C%2Fsvg%3E");
+    -webkit-mask-repeat: repeat-x; mask-repeat: repeat-x;
+    -webkit-mask-size: 96px 6px; mask-size: 96px 6px;
+    border: none;
+  }
+
+  /* Section dividers: the element is already a bar, so it takes the mask itself. */
+  section::before {
+    height: 7px !important;
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2796%27%20height%3D%276%27%20viewBox%3D%270%200%2096%206%27%3E%3Cpath%20d%3D%27M0%203.4%20C16%201.6%2032%204.6%2048%203%20C64%201.4%2080%204.4%2096%202.8%27%20stroke%3D%27%23000%27%20stroke-width%3D%272.6%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27%2F%3E%3C%2Fsvg%3E"); mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2796%27%20height%3D%276%27%20viewBox%3D%270%200%2096%206%27%3E%3Cpath%20d%3D%27M0%203.4%20C16%201.6%2032%204.6%2048%203%20C64%201.4%2080%204.4%2096%202.8%27%20stroke%3D%27%23000%27%20stroke-width%3D%272.6%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27%2F%3E%3C%2Fsvg%3E");
+    -webkit-mask-repeat: repeat-x; mask-repeat: repeat-x;
+    -webkit-mask-size: 96px 7px; mask-size: 96px 7px;
+    border-radius: 0 !important;
+  }
+
+  footer { border-top: none !important; position: relative; padding-top: 1.5rem; }
+  .spec  { border-block: none !important; position: relative; padding-block: .9rem; }
+  .spec::after { margin-top: .9rem; }
+  .job { border-top: none !important; }
+  .job:last-child { border-bottom: none !important; }
+  .notes > div { border-top: none !important; }
+  .stage-cap { border-top: none !important; padding-top: 0; }
+  .stage-cap::before { margin-bottom: .55rem; }
+  .claim-payoff { border-top: none !important; }
+  .claim-payoff::before { margin-bottom: .85rem; }
+  hr { margin: 1.4rem 0; }
+
+  /* Table rules: painted, not masked, so the cell contents survive. */
+  th, td {
+    border-bottom: none !important;
+    background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2796%27%20height%3D%276%27%20viewBox%3D%270%200%2096%206%27%3E%3Cpath%20d%3D%27M0%203.4%20C16%201.6%2032%204.6%2048%203%20C64%201.4%2080%204.4%2096%202.8%27%20stroke%3D%27%2523141210%27%20stroke-width%3D%272.6%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27%2F%3E%3C%2Fsvg%3E");
+    background-repeat: repeat-x;
+    background-position: left bottom;
+    background-size: 96px 6px;
+  }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) th,
+  :root:not([data-theme="light"]) td { background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2796%27%20height%3D%276%27%20viewBox%3D%270%200%2096%206%27%3E%3Cpath%20d%3D%27M0%203.4%20C16%201.6%2032%204.6%2048%203%20C64%201.4%2080%204.4%2096%202.8%27%20stroke%3D%27%2523ffffff%27%20stroke-width%3D%272.6%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27%2F%3E%3C%2Fsvg%3E"); }
+}
+[data-theme="dark"] th,
+[data-theme="dark"] td { background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2796%27%20height%3D%276%27%20viewBox%3D%270%200%2096%206%27%3E%3Cpath%20d%3D%27M0%203.4%20C16%201.6%2032%204.6%2048%203%20C64%201.4%2080%204.4%2096%202.8%27%20stroke%3D%27%2523ffffff%27%20stroke-width%3D%272.6%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27%2F%3E%3C%2Fsvg%3E"); }
+  tbody tr:last-child td { background-image: none; }
+
+
+  /* The section signature mark was a 10px square with four right angles — the
+     last perfectly machined shape sitting beside a hand-drawn heading. */
+  .sig::before {
+    width: 15px !important; height: 15px !important;
+    border: 3px solid var(--rule) !important;
+    border-radius: 8px 3px 9px 4px / 4px 9px 3px 8px !important;
+    background: var(--yellow) !important;
+    box-shadow: 2px 2px 0 var(--rule);
+  }
+  section:nth-of-type(even) .sig::before { border-radius: 4px 9px 3px 8px / 8px 3px 9px 4px !important; }
+
+  /* The dashed placeholder rule in the empty stage is a line too. */
+  .stage-empty .rule {
+    border: none !important; height: 6px; width: 4.2rem;
+    background: #6b6f6c;
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2796%27%20height%3D%276%27%20viewBox%3D%270%200%2096%206%27%3E%3Cpath%20d%3D%27M0%203.4%20C16%201.6%2032%204.6%2048%203%20C64%201.4%2080%204.4%2096%202.8%27%20stroke%3D%27%23000%27%20stroke-width%3D%272.6%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27%2F%3E%3C%2Fsvg%3E"); mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2796%27%20height%3D%276%27%20viewBox%3D%270%200%2096%206%27%3E%3Cpath%20d%3D%27M0%203.4%20C16%201.6%2032%204.6%2048%203%20C64%201.4%2080%204.4%2096%202.8%27%20stroke%3D%27%23000%27%20stroke-width%3D%272.6%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27%2F%3E%3C%2Fsvg%3E");
+    -webkit-mask-repeat: repeat-x; mask-repeat: repeat-x;
+    -webkit-mask-size: 96px 6px; mask-size: 96px 6px;
+  }
+
+
+  /* The badge rides up over the spec strip so it sits on the sheet rather than
+     beside it — it should look applied, which means it has to cover something.
+     z-index puts it over the drawn rules; the strip keeps its full text, so
+     nothing that carries information is hidden. */
+  .stamp {
+    top: clamp(-1.4rem, -1vw, -0.4rem) !important;
+    right: clamp(0rem, 1vw, 1.2rem) !important;
+    z-index: 6 !important;
+  }
+
+
+  /* The badge overlaps the spec rules the way a sticker sits on a sheet: it
+     covers them where it lands, and they run out either side of it. What it
+     must not do is swallow the strip's text, so the strip is given a right
+     margin the width of the badge and wraps before it reaches it. */
+  .stamp { top: clamp(-1rem, -0.6vw, -0.2rem) !important; }
+  .spec { padding-right: 15rem; }
+  @media (max-width: 62rem) { .spec { padding-right: 0; } }
+
+
+  /* 5cm right, out past the sheet's edge into the margin. That is ~189px, which
+     only exists on a wide window — the sheet is 66rem and centred, so on
+     anything narrower the badge would hang off the viewport. It steps back in
+     rather than clipping. */
+  .stamp { right: -5cm !important; }
+  @media (max-width: 100rem) { .stamp { right: -2.5cm !important; } }
+  @media (max-width: 84rem)  { .stamp { right: -0.8cm !important; } }
+  @media (max-width: 72rem)  { .stamp { right: 0 !important; } }
+
+
+  /* Reserve the space every clip will occupy before it has loaded. Without an
+     aspect-ratio a <video> is zero-height until metadata arrives, and the whole
+     page below it jumps down the moment it does. The stage already declared
+     one; the hero never did. */
+  .demo { aspect-ratio: 1200 / 780; width: 100%; height: auto; }
+  .demo-frame { aspect-ratio: auto; }
+  figure img { aspect-ratio: 16 / 10; object-fit: cover; }
+
+
+  /* ── The clip lives in the open job ──────────────────────────
+     It was a sticky panel in a second column, which meant the video and the
+     words describing it were never in the same place on a narrow screen, and
+     on a wide one the clip stayed put while you read past it. Moving the one
+     stage element into whichever panel is open keeps them together at every
+     width, and costs nothing: it is the same element, relocated. */
+  /* Wide enough for two columns: the stage keeps its own side, sticky.
+     Anything narrower — phone, tablet either way up — and the clip belongs
+     inside the job it illustrates, where the words describing it are. */
+  @media (max-width: 80rem) {
+    .jobs { grid-template-columns: minmax(0, 1fr) !important; }
+    .job-list { width: 100%; }
+    .stage-wrap { position: static !important; margin-top: .9rem; max-width: 44rem; }
+    .job[data-open="false"] .stage-wrap { display: none; }
+  }
+  .job-panel .stage { aspect-ratio: 764 / 480; }
+
+
+  /* ── The badge's ninja comes alive on hover ──────────────────
+     The app's own loading animation, not a GIF: the mark flips toward you
+     through sixteen discrete positions a second, the way hand-cranked film
+     moves. It is a transform on an inline SVG, so it costs no extra bytes,
+     stays crisp at any size, and runs on the compositor.
+
+     It flips on Y rather than spinning in the plane, so the face is never
+     upside down — the same reason the app's loader does. */
+  .stamp { perspective: 620px; }
+  .stamp-mark { transform-style: preserve-3d; will-change: transform; }
+
+  @keyframes ninja-flip { to { transform: rotateY(360deg); } }
+
+  .stamp:hover .stamp-mark,
+  .stamp:focus-visible .stamp-mark {
+    animation: ninja-flip 1.6s steps(16, end) infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .stamp:hover .stamp-mark,
+    .stamp:focus-visible .stamp-mark { animation: none; }
+  }
+
+
+  /* A lighter ground. The sand was the reference page's colour; on a full-width
+     site it reads heavier than it did as a swatch, so it moves closer to paper
+     while keeping the warmth that stops it looking like a blank white page. */
+  :root { --paper: #fefbf4; }
+
+  /* Icons are ink, not accent. Yellow icons were invisible on the yellow badge
+     and fought the sky and lilac card fills; black reads on all three. */
+  .card-icon { color: #141210 !important; }
+  .card-icon svg { color: inherit; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .card-icon { color: #ffffff !important; }
+}
+[data-theme="dark"] .card-icon { color: #ffffff !important; }
+
+
+  /* The "How it works" label is the only thing telling you the card has a back,
+     so it should not be the faintest text on it. Bold, and at full strength
+     rather than 75% — the opacity was doing the same job the small size and
+     letter-spacing already do. */
+  .card-how-label {
+    font-family: "Bricolage Grotesque", sans-serif !important;
+    font-weight: 800 !important;
+    font-size: .62rem !important;
+    opacity: 1 !important;
+  }
+
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="sheet">
+
+  <div class="ninja"><svg viewBox="11 -3 119 119" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M 61.804 21.515 C 61.422 21.905, 56.794 22.551, 51.520 22.950 C 42.562 23.627, 41.716 23.883, 38.668 26.837 C 36.873 28.577, 34.504 30, 33.402 30 C 29.029 30, 27.128 38.274, 30.617 42.129 C 32.124 43.795, 31.922 44.330, 27.617 50.057 C 23.548 55.469, 21.208 62.225, 24 60.500 C 24.582 60.140, 25 61.141, 25 62.894 C 25 64.551, 25.498 66.999, 26.107 68.334 C 27.061 70.430, 26.725 71.526, 23.658 76.320 C 19.393 82.988, 15.716 90.050, 16.238 90.572 C 16.682 91.016, 126.001 91.642, 126 91.200 C 126 90.371, 122.244 83.747, 118.308 77.631 C 114.306 71.414, 113.987 70.476, 114.943 67.732 C 115.525 66.065, 116 63.681, 116 62.434 C 116 61.187, 116.509 59.997, 117.132 59.789 C 118.599 59.300, 115.871 53.927, 111.340 48.382 C 108.477 44.878, 108.192 44.086, 109.424 43.063 C 113.355 39.801, 111.953 31.498, 107.285 30.401 C 105.753 30.041, 103.054 28.381, 101.287 26.713 C 98.531 24.111, 96.966 23.558, 90.287 22.824 C 77.749 21.445, 62.557 20.747, 61.804 21.515 M 40.687 30.805 C 36.485 35.190, 36.670 46.703, 41 50.347 C 45.848 54.426, 43.261 55.676, 37.385 52.093 C 34.270 50.194, 34.270 50.194, 31.635 52.637 C 28.419 55.619, 28.366 55.978, 31.250 55.226 C 33.392 54.666, 33.416 54.722, 31.752 56.389 C 29.726 58.417, 28.413 62.771, 29.517 63.797 C 29.933 64.183, 30.475 63.938, 30.720 63.250 C 31.487 61.104, 33 61.883, 33 64.422 C 33 71.201, 48.890 84.391, 49.056 77.750 C 49.100 76.007, 49.382 76.270, 50.306 78.913 C 52.249 84.466, 57.370 86.489, 69.500 86.495 C 86.165 86.503, 90.802 84.523, 92.042 76.870 C 92.750 72.500, 92.750 72.500, 92.875 76.250 C 93.019 80.561, 94.061 80.870, 98.771 77.998 C 102.319 75.835, 108 67.714, 108 64.804 C 108 62.747, 109.580 62.372, 110.338 64.250 C 110.615 64.938, 110.878 64.363, 110.921 62.973 C 110.964 61.582, 110.299 59.445, 109.443 58.223 C 108.013 56.180, 108.028 56, 109.630 56 C 111.043 56, 110.836 55.439, 108.541 53.043 C 105.707 50.085, 105.707 50.085, 103.219 52.043 C 101.850 53.119, 99.366 54, 97.699 54 C 94.667 54, 94.667 54, 98.566 50.629 C 103.628 46.253, 103.988 35.730, 99.245 30.750 C 95.092 26.390, 44.872 26.437, 40.687 30.805 M 42.747 31.750 C 39.494 35.391, 39.389 44.753, 42.564 48.066 C 47.437 53.153, 53.028 52.357, 57.655 45.917 C 64.715 36.090, 75.809 36.093, 81.859 45.925 C 84.854 50.792, 85.163 51, 89.414 51 C 97.023 51, 100.413 47.225, 99.619 39.634 C 98.827 32.054, 97.063 30, 91.345 30 C 86.106 30, 86.097 30.061, 90.500 35.435 C 94.462 40.270, 94.865 42.467, 92.067 43.964 C 90.392 44.861, 89.288 44.005, 83.817 37.575 C 77.500 30.151, 77.500 30.151, 69.885 30.075 C 62.269 30, 62.269 30, 56.025 37.549 C 50.173 44.624, 49.649 45.011, 47.695 43.713 C 44.492 41.587, 44.635 40.696, 48.974 35.767 C 51.188 33.252, 53 30.925, 53 30.597 C 53 29.109, 44.224 30.096, 42.747 31.750 M 31.813 33.683 C 32.534 33.972, 33.397 33.936, 33.729 33.604 C 34.061 33.272, 33.471 33.036, 32.417 33.079 C 31.252 33.127, 31.015 33.364, 31.813 33.683 M 106 34 C 106 34.550, 106.675 35, 107.500 35 C 108.325 35, 109 34.550, 109 34 C 109 33.450, 108.325 33, 107.500 33 C 106.675 33, 106 33.450, 106 34 M 62.247 43.250 C 57.714 48.931, 57.836 50.557, 63.046 53.933 C 72.080 59.787, 67.529 68.483, 56.378 66.674 C 52.599 66.061, 47 61.666, 47 59.313 C 47 57.587, 45.937 57.655, 43.223 59.557 C 40.711 61.316, 40.149 64.264, 42.497 63.363 C 45.219 62.318, 51.386 68.831, 52.500 73.926 C 53.928 80.459, 57.357 81.997, 70.500 81.997 C 83.945 81.997, 87.366 80.417, 87.814 74 C 88.174 68.840, 92.233 63.566, 95.239 64.352 C 97.657 64.985, 97.445 63.767, 94.686 61.174 C 91.843 58.504, 91.370 58.477, 90.723 60.950 C 89.461 65.776, 82.346 67.923, 76.011 65.388 C 68.706 62.465, 70.915 54.787, 79.750 52.393 C 80.987 52.058, 82 51.633, 82 51.449 C 82 50.618, 77.480 43.423, 76.545 42.765 C 74.755 41.507, 63.329 41.894, 62.247 43.250 M 66.698 67.692 C 64.156 69.023, 63.925 69.590, 64.198 73.829 C 64.500 78.500, 64.500 78.500, 70.500 78.500 C 76.500 78.500, 76.500 78.500, 76.800 73.865 C 77.086 69.446, 76.947 69.170, 73.800 67.930 C 71.985 67.215, 70.275 66.539, 70 66.427 C 69.725 66.316, 68.239 66.885, 66.698 67.692 M 56 72.443 C 56 73.835, 56.957 75.557, 58.223 76.443 C 61.854 78.987, 63 78.401, 63 74 C 63 70.095, 62.917 70, 59.500 70 C 56.455 70, 56 70.318, 56 72.443 M 79 74 C 79 78.149, 79.784 78.721, 83.066 76.965 C 86.476 75.140, 85.689 70, 82 70 C 79.167 70, 79 70.222, 79 74 M 48.158 73 C 48.158 74.375, 48.385 74.938, 48.662 74.250 C 48.940 73.563, 48.940 72.438, 48.662 71.750 C 48.385 71.063, 48.158 71.625, 48.158 73"/></svg><b>PaperNinja</b></div>
+
+  <div class="trim">
+    <a class="stamp" href="https://github.com/shyhunter/PaperNinja"
+       aria-label="PaperNinja is free and open source. Read the source on GitHub.">
+      <b class="stamp-word">PaperNinja</b>
+      <svg class="stamp-mark" viewBox="11 -3 119 119" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M 61.804 21.515 C 61.422 21.905, 56.794 22.551, 51.520 22.950 C 42.562 23.627, 41.716 23.883, 38.668 26.837 C 36.873 28.577, 34.504 30, 33.402 30 C 29.029 30, 27.128 38.274, 30.617 42.129 C 32.124 43.795, 31.922 44.330, 27.617 50.057 C 23.548 55.469, 21.208 62.225, 24 60.500 C 24.582 60.140, 25 61.141, 25 62.894 C 25 64.551, 25.498 66.999, 26.107 68.334 C 27.061 70.430, 26.725 71.526, 23.658 76.320 C 19.393 82.988, 15.716 90.050, 16.238 90.572 C 16.682 91.016, 126.001 91.642, 126 91.200 C 126 90.371, 122.244 83.747, 118.308 77.631 C 114.306 71.414, 113.987 70.476, 114.943 67.732 C 115.525 66.065, 116 63.681, 116 62.434 C 116 61.187, 116.509 59.997, 117.132 59.789 C 118.599 59.300, 115.871 53.927, 111.340 48.382 C 108.477 44.878, 108.192 44.086, 109.424 43.063 C 113.355 39.801, 111.953 31.498, 107.285 30.401 C 105.753 30.041, 103.054 28.381, 101.287 26.713 C 98.531 24.111, 96.966 23.558, 90.287 22.824 C 77.749 21.445, 62.557 20.747, 61.804 21.515 M 40.687 30.805 C 36.485 35.190, 36.670 46.703, 41 50.347 C 45.848 54.426, 43.261 55.676, 37.385 52.093 C 34.270 50.194, 34.270 50.194, 31.635 52.637 C 28.419 55.619, 28.366 55.978, 31.250 55.226 C 33.392 54.666, 33.416 54.722, 31.752 56.389 C 29.726 58.417, 28.413 62.771, 29.517 63.797 C 29.933 64.183, 30.475 63.938, 30.720 63.250 C 31.487 61.104, 33 61.883, 33 64.422 C 33 71.201, 48.890 84.391, 49.056 77.750 C 49.100 76.007, 49.382 76.270, 50.306 78.913 C 52.249 84.466, 57.370 86.489, 69.500 86.495 C 86.165 86.503, 90.802 84.523, 92.042 76.870 C 92.750 72.500, 92.750 72.500, 92.875 76.250 C 93.019 80.561, 94.061 80.870, 98.771 77.998 C 102.319 75.835, 108 67.714, 108 64.804 C 108 62.747, 109.580 62.372, 110.338 64.250 C 110.615 64.938, 110.878 64.363, 110.921 62.973 C 110.964 61.582, 110.299 59.445, 109.443 58.223 C 108.013 56.180, 108.028 56, 109.630 56 C 111.043 56, 110.836 55.439, 108.541 53.043 C 105.707 50.085, 105.707 50.085, 103.219 52.043 C 101.850 53.119, 99.366 54, 97.699 54 C 94.667 54, 94.667 54, 98.566 50.629 C 103.628 46.253, 103.988 35.730, 99.245 30.750 C 95.092 26.390, 44.872 26.437, 40.687 30.805 M 42.747 31.750 C 39.494 35.391, 39.389 44.753, 42.564 48.066 C 47.437 53.153, 53.028 52.357, 57.655 45.917 C 64.715 36.090, 75.809 36.093, 81.859 45.925 C 84.854 50.792, 85.163 51, 89.414 51 C 97.023 51, 100.413 47.225, 99.619 39.634 C 98.827 32.054, 97.063 30, 91.345 30 C 86.106 30, 86.097 30.061, 90.500 35.435 C 94.462 40.270, 94.865 42.467, 92.067 43.964 C 90.392 44.861, 89.288 44.005, 83.817 37.575 C 77.500 30.151, 77.500 30.151, 69.885 30.075 C 62.269 30, 62.269 30, 56.025 37.549 C 50.173 44.624, 49.649 45.011, 47.695 43.713 C 44.492 41.587, 44.635 40.696, 48.974 35.767 C 51.188 33.252, 53 30.925, 53 30.597 C 53 29.109, 44.224 30.096, 42.747 31.750 M 31.813 33.683 C 32.534 33.972, 33.397 33.936, 33.729 33.604 C 34.061 33.272, 33.471 33.036, 32.417 33.079 C 31.252 33.127, 31.015 33.364, 31.813 33.683 M 106 34 C 106 34.550, 106.675 35, 107.500 35 C 108.325 35, 109 34.550, 109 34 C 109 33.450, 108.325 33, 107.500 33 C 106.675 33, 106 33.450, 106 34 M 62.247 43.250 C 57.714 48.931, 57.836 50.557, 63.046 53.933 C 72.080 59.787, 67.529 68.483, 56.378 66.674 C 52.599 66.061, 47 61.666, 47 59.313 C 47 57.587, 45.937 57.655, 43.223 59.557 C 40.711 61.316, 40.149 64.264, 42.497 63.363 C 45.219 62.318, 51.386 68.831, 52.500 73.926 C 53.928 80.459, 57.357 81.997, 70.500 81.997 C 83.945 81.997, 87.366 80.417, 87.814 74 C 88.174 68.840, 92.233 63.566, 95.239 64.352 C 97.657 64.985, 97.445 63.767, 94.686 61.174 C 91.843 58.504, 91.370 58.477, 90.723 60.950 C 89.461 65.776, 82.346 67.923, 76.011 65.388 C 68.706 62.465, 70.915 54.787, 79.750 52.393 C 80.987 52.058, 82 51.633, 82 51.449 C 82 50.618, 77.480 43.423, 76.545 42.765 C 74.755 41.507, 63.329 41.894, 62.247 43.250 M 66.698 67.692 C 64.156 69.023, 63.925 69.590, 64.198 73.829 C 64.500 78.500, 64.500 78.500, 70.500 78.500 C 76.500 78.500, 76.500 78.500, 76.800 73.865 C 77.086 69.446, 76.947 69.170, 73.800 67.930 C 71.985 67.215, 70.275 66.539, 70 66.427 C 69.725 66.316, 68.239 66.885, 66.698 67.692 M 56 72.443 C 56 73.835, 56.957 75.557, 58.223 76.443 C 61.854 78.987, 63 78.401, 63 74 C 63 70.095, 62.917 70, 59.500 70 C 56.455 70, 56 70.318, 56 72.443 M 79 74 C 79 78.149, 79.784 78.721, 83.066 76.965 C 86.476 75.140, 85.689 70, 82 70 C 79.167 70, 79 70.222, 79 74 M 48.158 73 C 48.158 74.375, 48.385 74.938, 48.662 74.250 C 48.940 73.563, 48.940 72.438, 48.662 71.750 C 48.385 71.063, 48.158 71.625, 48.158 73"/></svg>
+      <b>Free</b>
+      <b class="stamp-line">Open Source</b>
+    </a>
+
+    <p class="spec">
+      <span>Tools <b>19</b></span>
+      <span>Need nothing installed <b>18 of 19</b></span>
+      <span>Your files uploaded <b>never</b></span>
+      <span>Sign-up <b>none</b></span>
+    </p>
+
+    <h1>Everything happens<br>on <em>your</em> machine.</h1>
+    <p class="stand">
+      Compressing a PDF, converting a scan, signing a form: the jobs you would
+      normally hand to a website. PaperNinja&rsquo;s <a href="#tools">nineteen tools</a>
+      do them on your own computer instead.
+    </p>
+    <div class="btns">
+      <!-- Windows has one file, so this downloads it. macOS and Linux have two
+           apiece and the user agent cannot say which, so for them this is a jump
+           to the cards below the demo -- marked with an arrow by CSS, because a
+           button that says Download and does not download is a small lie. -->
+      <a class="btn" id="dl" href="#get">Download</a>
+      <a class="btn ghost" href="https://github.com/shyhunter/PaperNinja">Read the source</a>
+    </div>
+    <p class="dl-note" id="dl-note">Every build is listed below.</p>
+
+    <div class="demo-frame">
+    <video class="demo" id="demo" poster="media/hero-poster.jpg"
+           autoplay muted loop playsinline controls preload="metadata"
+           aria-label="PaperNinja's PDF editor with a document open, moving through the watermark, page numbers, make searchable, redact and repair panels">
+      <source src="media/hero.mp4" type="video/mp4">
+      Your browser cannot play this video. The screenshots below show the same thing.
+    </video>
+    </div>
+
+    <!-- Every build, always visible, directly under the demo it just sold you.
+         Not a dropdown and not an overlay: the video is the best thing on this
+         page and nothing should cover it, and choosing between two Mac builds
+         deserves more room than a menu. The card for the machine we think this
+         is gets the fill and the stamp; the rest stay plain and clickable. -->
+    <section class="get" id="get" aria-label="Download PaperNinja">
+      <div class="get-head">
+        <h2>Every <em>build</em></h2>
+        <p class="mono" id="get-note">Pick the one for your machine.</p>
+      </div>
+
+      <div class="get-cards">
+        <div class="get-card" data-os="mac">
+          <span class="get-stamp" aria-hidden="true">Probably<br>yours</span>
+          <h3>macOS</h3>
+          <ul>
+            <li data-pick><a href="https://github.com/shyhunter/PaperNinja/releases/download/v1.0.1/PaperNinja_1.0.1_aarch64.dmg"><b>Apple silicon</b><span>M1&ndash;M4 &middot; .dmg</span></a></li>
+            <li><a href="https://github.com/shyhunter/PaperNinja/releases/download/v1.0.1/PaperNinja_1.0.1_x64.dmg"><b>Intel</b><span>2016&ndash;2020 &middot; .dmg</span></a></li>
+          </ul>
+        </div>
+
+        <div class="get-card" data-os="windows">
+          <span class="get-stamp" aria-hidden="true">Probably<br>yours</span>
+          <h3>Windows</h3>
+          <ul>
+            <li data-pick><a href="https://github.com/shyhunter/PaperNinja/releases/download/v1.0.1/PaperNinja_1.0.1_x64-setup.exe"><b>Installer</b><span>64-bit &middot; .exe</span></a></li>
+          </ul>
+        </div>
+
+        <div class="get-card" data-os="linux">
+          <span class="get-stamp" aria-hidden="true">Probably<br>yours</span>
+          <h3>Linux</h3>
+          <ul>
+            <li data-pick><a href="https://github.com/shyhunter/PaperNinja/releases/download/v1.0.1/PaperNinja_1.0.1_amd64.deb"><b>Debian &amp; Ubuntu</b><span>amd64 &middot; .deb</span></a></li>
+            <li><a href="https://github.com/shyhunter/PaperNinja/releases/download/v1.0.1/PaperNinja_1.0.1_amd64.AppImage"><b>Everything else</b><span>amd64 &middot; .AppImage</span></a></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <section>
+    <p class="sig">Registration · none of any kind</p>
+    <h2><em>Privacy</em> was never optional.</h2>
+    <p class="lede">
+      No sign-up? Correct. No internet? Also correct.
+    </p>
+
+    <div class="claims">
+      <div class="claim">
+        <svg class="claim-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 21a8 8 0 0 1 11.873-7"/><circle cx="10" cy="8" r="5"/><path d="m17 17 5 5"/><path d="m22 17-5 5"/></svg>
+        <h3>Nothing to sign up for.</h3>
+        <p>
+          No email, no licence key, no trial that runs out, no free tier with the
+          good parts missing. Download it, open it, and the first thing you see
+          is the tool you came for.
+        </p>
+        <p class="claim-payoff">There is no server to have an account on.</p>
+      </div>
+
+      <div class="claim">
+        <svg class="claim-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h.01"/><path d="M8.5 16.429a5 5 0 0 1 7 0"/><path d="M5 12.859a10 10 0 0 1 5.17-2.69"/><path d="M19 12.859a10 10 0 0 0-2.007-1.523"/><path d="M2 8.82a15 15 0 0 1 4.177-2.643"/><path d="M22 8.82a15 15 0 0 0-11.288-3.764"/><path d="m2 2 20 20"/></svg>
+        <h3>Works with the network off.</h3>
+        <p>
+          All nineteen tools run on your own machine. On a plane, on a train,
+          on a laptop that has never been online: it behaves exactly the same.
+        </p>
+        <p class="claim-payoff">Turn off wi-fi and the only thing you lose is the update check.</p>
+      </div>
+    </div>
+
+    <div class="net-panel">
+      <div class="net-headline">
+        <svg class="claim-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 16h.01"/><path d="M2.212 11.577a2 2 0 0 0-.212.896V18a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-5.527a2 2 0 0 0-.212-.896L18.55 5.11A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/><path d="M21.946 12.013H2.054"/><path d="M6 16h.01"/></svg>
+        <p class="net-claim">Your documents never leave your computer.</p>
+      </div>
+      <p class="lede">
+        There is no upload step to skip and no account to trust with them:
+        compressing a contract or signing a form happens on your own machine, the
+        same way it would if you unplugged the internet first.
+      </p>
+      <p class="lede">
+        The app asks the outside world exactly two questions, both of them about
+        itself rather than about you. Here they are in full:
+      </p>
+
+      <div class="scroll">
+        <table class="net-table">
+        <thead><tr><th>When</th><th>What it asks</th><th>What it tells them about you</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>When you open the app</td>
+            <td>&ldquo;Is there a newer version?&rdquo;<br><span class="mono">api.github.com/repos/&hellip;/releases/latest</span></td>
+            <td>Nothing. It reads a version number and shows you a banner if one is newer.</td>
+          </tr>
+          <tr>
+            <td>When you open About</td>
+            <td>&ldquo;Where should feedback go?&rdquo;<br><span class="mono">raw.githubusercontent.com/&hellip;/feedback-config.json</span></td>
+            <td>Nothing of yours. It reads which <a href="https://github.com/shyhunter/PaperNinja/discussions">Discussions</a> board the Feedback button opens. Reports arrive pre-filled; nothing is posted until you press the button yourself.</td>
+          </tr>
+          <tr>
+            <td>Everything else you do</td>
+            <td>Nothing is asked.</td>
+            <td>Nothing at all. Your files are opened, changed and saved on this machine.</td>
+          </tr>
+        </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <p class="sig" id="tools">Yours, to go.</p>
+    <h2><em>Nineteen</em> tools</h2>
+    <p class="lede">Eighteen of them need nothing installed. Hover or tap a card to see how it works.</p>
+    <div class="filters" role="group" aria-label="Filter tools by what you start with">
+      <button class="filter" type="button" data-cat="all" aria-pressed="true">All <b>19</b></button>
+      <button class="filter" type="button" data-cat="pdf" aria-pressed="false">PDF <b>14</b></button>
+      <button class="filter" type="button" data-cat="other" aria-pressed="false">Images &amp; documents <b>5</b></button>
+    </div>
+    <p class="filter-status" id="filter-status" role="status">Showing all 19 tools.</p>
+    <div class="cards">
+      <button class="card" type="button" data-cat="pdf">
+        <span class="card-inner">
+          <span class="face recto">
+            <svg class="card-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M12 18v-6"/><path d="m9 15 3 3 3-3"/></svg>
+            <span class="card-name">Compress</span>
+            <span class="card-desc">Reduce PDF file size with quality presets</span>
+          </span>
+          <span class="face verso">
+            <span class="card-how-label">How it works</span>
+            <span class="card-how">Re-encodes the images and drops what the file does not need. Choose a quality, or a target size to stay under.</span>
+          </span>
+        </span>
+      </button>
+      <button class="card" type="button" data-cat="pdf">
+        <span class="card-inner">
+          <span class="face recto">
+            <svg class="card-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m8 6 4-4 4 4"/><path d="M12 2v10.3a4 4 0 0 1-1.172 2.872L4 22"/><path d="m20 22-5-5"/></svg>
+            <span class="card-name">Merge</span>
+            <span class="card-desc">Combine multiple PDFs into one document</span>
+          </span>
+          <span class="face verso">
+            <span class="card-how-label">How it works</span>
+            <span class="card-how">Joins files in the order you arrange them. Nothing is re-encoded, so quality is untouched.</span>
+          </span>
+        </span>
+      </button>
+      <button class="card" type="button" data-cat="pdf">
+        <span class="card-inner">
+          <span class="face recto">
+            <svg class="card-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="3"/><path d="M8.12 8.12 12 12"/><path d="M20 4 8.12 15.88"/><circle cx="6" cy="18" r="3"/><path d="M14.8 14.8 20 20"/></svg>
+            <span class="card-name">Split</span>
+            <span class="card-desc">Extract or separate pages from a PDF</span>
+          </span>
+          <span class="face verso">
+            <span class="card-how-label">How it works</span>
+            <span class="card-how">Take a page range out, or separate every page into its own file.</span>
+          </span>
+        </span>
+      </button>
+      <button class="card" type="button" data-cat="pdf">
+        <span class="card-inner">
+          <span class="face recto">
+            <svg class="card-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
+            <span class="card-name">Rotate</span>
+            <span class="card-desc">Rotate individual or all pages in a PDF</span>
+          </span>
+          <span class="face verso">
+            <span class="card-how-label">How it works</span>
+            <span class="card-how">Turns pages 90° at a time. The angle is recorded rather than the page redrawn, so nothing is re-encoded.</span>
+          </span>
+        </span>
+      </button>
+      <button class="card" type="button" data-cat="pdf">
+        <span class="card-inner">
+          <span class="face recto">
+            <svg class="card-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M18 22V8a2 2 0 0 0-2-2H2"/></svg>
+            <span class="card-name">Crop</span>
+            <span class="card-desc">Crop margins or select a region on pages</span>
+          </span>
+          <span class="face verso">
+            <span class="card-how-label">How it works</span>
+            <span class="card-how">Drag a box on the page. Apply it to every page, or only the ones you pick.</span>
+          </span>
+        </span>
+      </button>
+      <button class="card" type="button" data-cat="pdf">
+        <span class="card-inner">
+          <span class="face recto">
+            <svg class="card-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>
+            <span class="card-name">Organise pages</span>
+            <span class="card-desc">Reorder, delete, or duplicate pages</span>
+          </span>
+          <span class="face verso">
+            <span class="card-how-label">How it works</span>
+            <span class="card-how">Reorder, duplicate or delete pages from a grid of thumbnails, then apply once.</span>
+          </span>
+        </span>
+      </button>
+      <button class="card" type="button" data-cat="pdf">
+        <span class="card-inner">
+          <span class="face recto">
+            <svg class="card-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="4" x2="20" y1="9" y2="9"/><line x1="4" x2="20" y1="15" y2="15"/><line x1="10" x2="8" y1="3" y2="21"/><line x1="16" x2="14" y1="3" y2="21"/></svg>
+            <span class="card-name">Page numbers</span>
+            <span class="card-desc">Add page numbers to PDF pages</span>
+          </span>
+          <span class="face verso">
+            <span class="card-how-label">How it works</span>
+            <span class="card-how">Position, format and starting number. Added as real text, so they can be removed again later.</span>
+          </span>
+        </span>
+      </button>
+      <button class="card" type="button" data-cat="pdf">
+        <span class="card-inner">
+          <span class="face recto">
+            <svg class="card-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 13V8.5C14 7 15 7 15 5a3 3 0 0 0-6 0c0 2 1 2 1 3.5V13"/><path d="M20 15.5a2.5 2.5 0 0 0-2.5-2.5h-11A2.5 2.5 0 0 0 4 15.5V17a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1z"/><path d="M5 22h14"/></svg>
+            <span class="card-name">Watermark</span>
+            <span class="card-desc">Add text or image watermark to PDF pages</span>
+          </span>
+          <span class="face verso">
+            <span class="card-how-label">How it works</span>
+            <span class="card-how">Drag it where you want it and turn it with arrows. Applied across every page.</span>
+          </span>
+        </span>
+      </button>
+      <button class="card" type="button" data-cat="pdf">
+        <span class="card-inner">
+          <span class="face recto">
+            <svg class="card-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15.707 21.293a1 1 0 0 1-1.414 0l-1.586-1.586a1 1 0 0 1 0-1.414l5.586-5.586a1 1 0 0 1 1.414 0l1.586 1.586a1 1 0 0 1 0 1.414z"/><path d="m18 13-1.375-6.874a1 1 0 0 0-.746-.776L3.235 2.028a1 1 0 0 0-1.207 1.207L5.35 15.879a1 1 0 0 0 .776.746L13 18"/><path d="m2.3 2.3 7.286 7.286"/><circle cx="11" cy="11" r="2"/></svg>
+            <span class="card-name">Sign</span>
+            <span class="card-desc">Add a visual signature stamp to PDF pages</span>
+          </span>
+          <span class="face verso">
+            <span class="card-how-label">How it works</span>
+            <span class="card-how">Draw, type or upload a signature, then place it. Signatures you make are saved for next time.</span>
+          </span>
+        </span>
+      </button>
+      <button class="card" type="button" data-cat="pdf">
+        <span class="card-inner">
+          <span class="face recto">
+            <svg class="card-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49"/><path d="M14.084 14.158a3 3 0 0 1-4.242-4.242"/><path d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143"/><path d="m2 2 20 20"/></svg>
+            <span class="card-name">Redact</span>
+            <span class="card-desc">Permanently remove text or areas from a PDF</span>
+          </span>
+          <span class="face verso">
+            <span class="card-how-label">How it works</span>
+            <span class="card-how">Pages you redact are rasterised, so the text underneath is gone rather than covered. Those pages lose selectable text; the rest keep theirs.</span>
+          </span>
+        </span>
+      </button>
+      <button class="card" type="button" data-cat="pdf">
+        <span class="card-inner">
+          <span class="face recto">
+            <svg class="card-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.106-3.105c.32-.322.863-.22.983.218a6 6 0 0 1-8.259 7.057l-7.91 7.91a1 1 0 0 1-2.999-3l7.91-7.91a6 6 0 0 1 7.057-8.259c.438.12.54.662.219.984z"/></svg>
+            <span class="card-name">Repair</span>
+            <span class="card-desc">Fix corrupted or malformed PDFs</span>
+          </span>
+          <span class="face verso">
+            <span class="card-how-label">How it works</span>
+            <span class="card-how">Rebuilds a damaged file&#x27;s structure so it opens again. Offered automatically when one fails to load.</span>
+          </span>
+        </span>
+      </button>
+      <button class="card" type="button" data-cat="pdf">
+        <span class="card-inner">
+          <span class="face recto">
+            <svg class="card-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>
+            <span class="card-name">Make searchable</span>
+            <span class="card-desc">Read the text on a scan so it can be searched and copied</span>
+          </span>
+          <span class="face verso">
+            <span class="card-how-label">How it works</span>
+            <span class="card-how">Reads the text on a scan using the engine built into macOS, then adds an invisible layer you can search and copy.</span>
+          </span>
+        </span>
+      </button>
+      <button class="card" type="button" data-cat="pdf">
+        <span class="card-inner">
+          <span class="face recto">
+            <svg class="card-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.659 22H18a2 2 0 0 0 2-2V8a2.4 2.4 0 0 0-.706-1.706l-3.588-3.588A2.4 2.4 0 0 0 14 2H6a2 2 0 0 0-2 2v9.34"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M10.378 12.622a1 1 0 0 1 3 3.003L8.36 20.637a2 2 0 0 1-.854.506l-2.867.837a.5.5 0 0 1-.62-.62l.836-2.869a2 2 0 0 1 .506-.853z"/></svg>
+            <span class="card-name">Edit text</span>
+            <span class="card-desc">Edit text and images in a PDF document</span>
+          </span>
+          <span class="face verso">
+            <span class="card-how-label">How it works</span>
+            <span class="card-how">Change text and images in place, find words across the document, and reorder pages without leaving.</span>
+          </span>
+        </span>
+      </button>
+      <button class="card" type="button" data-cat="pdf">
+        <span class="card-inner">
+          <span class="face recto">
+            <svg class="card-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><circle cx="10" cy="12" r="2"/><path d="m20 17-1.296-1.296a2.41 2.41 0 0 0-3.408 0L9 22"/></svg>
+            <span class="card-name">PDF to JPG</span>
+            <span class="card-desc">Export PDF pages as JPEG or PNG images</span>
+          </span>
+          <span class="face verso">
+            <span class="card-how-label">How it works</span>
+            <span class="card-how">Renders each page to an image at the resolution you choose.</span>
+          </span>
+        </span>
+      </button>
+      <button class="card" type="button" data-cat="other" data-kind="image">
+        <span class="card-inner">
+          <span class="face recto">
+            <svg class="card-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11.35 22H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.706.706l3.588 3.588A2.4 2.4 0 0 1 20 8v5.35"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M14 19h6"/><path d="M17 16v6"/></svg>
+            <span class="card-name">JPG to PDF</span>
+            <span class="card-desc">Convert images into a single PDF document</span>
+          </span>
+          <span class="face verso">
+            <span class="card-how-label">How it works</span>
+            <span class="card-how">Places images into one PDF, a page each, in the order you set.</span>
+          </span>
+        </span>
+      </button>
+      <button class="card" type="button" data-cat="other" data-kind="image">
+        <span class="card-inner">
+          <span class="face recto">
+            <svg class="card-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.3 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10l-3.1-3.1a2 2 0 0 0-2.814.014L6 21"/><path d="m14 19 3 3v-5.5"/><path d="m17 22 3-3"/><circle cx="9" cy="9" r="2"/></svg>
+            <span class="card-name">Compress image</span>
+            <span class="card-desc">Resize and convert images with quality control</span>
+          </span>
+          <span class="face verso">
+            <span class="card-how-label">How it works</span>
+            <span class="card-how">Re-encodes at a quality you pick, and never hands back a file larger than the one you gave it.</span>
+          </span>
+        </span>
+      </button>
+      <button class="card" type="button" data-cat="other" data-kind="image">
+        <span class="card-inner">
+          <span class="face recto">
+            <svg class="card-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
+            <span class="card-name">Rotate image</span>
+            <span class="card-desc">Rotate images 90°, 180°, or 270°</span>
+          </span>
+          <span class="face verso">
+            <span class="card-how-label">How it works</span>
+            <span class="card-how">Turns by 90° at a time, without re-encoding where the format allows.</span>
+          </span>
+        </span>
+      </button>
+      <button class="card" type="button" data-cat="other" data-kind="image">
+        <span class="card-inner">
+          <span class="face recto">
+            <svg class="card-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/></svg>
+            <span class="card-name">Convert image</span>
+            <span class="card-desc">Convert between JPG, PNG, and WebP formats</span>
+          </span>
+          <span class="face verso">
+            <span class="card-how-label">How it works</span>
+            <span class="card-how">Between JPEG, PNG and WebP, with dimensions and quality in the same step.</span>
+          </span>
+        </span>
+      </button>
+      <button class="card" type="button" data-cat="other" data-kind="doc">
+        <span class="card-inner">
+          <span class="face recto">
+            <svg class="card-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/></svg>
+            <span class="card-name">Convert document</span>
+            <span class="card-desc">Convert between PDF, DOC, EPUB, and ebook formats</span>
+          </span>
+          <span class="face verso">
+            <span class="card-how-label">How it works</span>
+            <span class="card-how">To Markdown, HTML, JSON, text or DOCX with nothing installed. EPUB, MOBI, DOC and ODT reach for Calibre or LibreOffice.</span>
+          </span>
+        </span>
+      </button>
+    </div>
+  </section>
+
+  <section>
+    <p class="sig">What it is for</p>
+    <h2>The jobs people <em>actually</em> open it for</h2>
+    <p class="lede">
+      Pick one and the loop beside it shows that job being done, start to finish,
+      on a real document. No narration, no cuts to a marketing shot.
+    </p>
+
+    <div class="jobs">
+      <div class="job-list">
+        <div class="job" data-job="0" data-open="true">
+          <button class="job-head" type="button" id="jb0" aria-expanded="true" aria-controls="jp0">
+            <span class="job-mark" aria-hidden="true"></span>
+            <span class="job-title">Compression that survives the send</span>
+          </button>
+          <div class="job-panel" id="jp0" role="region" aria-labelledby="jb0">
+            <p>Get a scan or a report under an attachment limit without turning the text to mush. The setting says what it will cost before you commit to it.</p>
+          <p class="job-stat">73.80 MB &rarr; 46.13 MB &middot; 37% smaller &middot; 438 pages</p>
+          <p>Measured, not promised: a scanned page went from 127 KB to 40 KB, 68% smaller. A photo PDF already at screen resolution came back unchanged. There was nothing left to downsample, and the app said so instead of pretending otherwise.</p>
+          </div>
+        </div>
+        <div class="job" data-job="1" data-open="false">
+          <button class="job-head" type="button" id="jb1" aria-expanded="false" aria-controls="jp1">
+            <span class="job-mark" aria-hidden="true"></span>
+            <span class="job-title">A manuscript that becomes an ebook</span>
+          </button>
+          <div class="job-panel" id="jp1" role="region" aria-labelledby="jb1">
+            <p>EPUB and MOBI out of the document you already wrote. Calibre does that pair; everything else converts with nothing installed.</p>
+          <p>Measured, not promised: the file got bigger, not smaller. An EPUB is a zip archive of HTML, fonts and navigation metadata, and that container has a fixed cost a short document cannot spread out. Convert something book-length and the ratio flips; convert six pages and the honest answer is that it grows.</p>
+          </div>
+        </div>
+        <div class="job" data-job="2" data-open="false">
+          <button class="job-head" type="button" id="jb2" aria-expanded="false" aria-controls="jp2">
+            <span class="job-mark" aria-hidden="true"></span>
+            <span class="job-title">Turn a PDF into Markdown and spend fewer tokens</span>
+          </button>
+          <div class="job-panel" id="jp2" role="region" aria-labelledby="jb2">
+            <p>Export to Markdown, HTML, JSON or plain text. What reaches the model is structure rather than a picture of a page, which reads better and costs a fraction of the tokens.</p>
+          </div>
+        </div>
+        <div class="job" data-job="3" data-open="false">
+          <button class="job-head" type="button" id="jb3" aria-expanded="false" aria-controls="jp3">
+            <span class="job-mark" aria-hidden="true"></span>
+            <span class="job-title">A signature without a signing service</span>
+          </button>
+          <div class="job-panel" id="jp3" role="region" aria-labelledby="jb3">
+            <p>Draw, type or upload it once, place it, save the file. Nobody else holds the document, and there is no account in between.</p>
+          </div>
+        </div>
+        <div class="job" data-job="4" data-open="false">
+          <button class="job-head" type="button" id="jb4" aria-expanded="false" aria-controls="jp4">
+            <span class="job-mark" aria-hidden="true"></span>
+            <span class="job-title">Redaction that stays redacted</span>
+          </button>
+          <div class="job-panel" id="jp4" role="region" aria-labelledby="jb4">
+            <p>Text is removed, not covered with a black rectangle somebody can lift off in another reader.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="stage-wrap">
+        <div class="stage">
+          <div class="stage-inner">
+            <video id="stage-video" autoplay muted loop playsinline preload="metadata"
+                   aria-label="PaperNinja performing the selected job on a real document"></video>
+          </div>
+        </div>
+        <p class="stage-cap" id="stage-cap"></p>
+      </div>
+    </div>
+
+    <script>
+      (function () {
+        var SRC = ["media/compress.mp4", "media/ebook.mp4", "media/markdown.mp4", "media/signature.mp4", "media/redact.mp4"];
+        var POSTER = ["media/compress-poster.jpg", "media/ebook-poster.jpg", "media/markdown-poster.jpg", "media/signature-poster.jpg", "media/redact-poster.jpg"];
+        var CAPS = ["Configure to compare on a 438-page document, ending held on the figure.", "PDF to EPUB, reflowable rather than a picture of a page: typography and margins set before it converts.", "PDF to Markdown &middot; 22.7 KB &rarr; 12.5 KB &middot; 45% smaller.", "Typed, placed on every page, and applied. No signing service in between.", "Drawn in whichever colour you pick, then applied: the page is flattened and the text underneath is gone."];
+        var vid = document.getElementById('stage-video');
+        // One stage, moved into whichever panel is open, rather than four
+        // copies of a clip that already weighs more than the rest of the page.
+        var stageWrap = document.querySelector('.stage-wrap');
+        var stageHome = stageWrap && stageWrap.parentNode;   // the second column
+        var inline = window.matchMedia('(max-width: 80rem)');
+        var current = 0;
+
+        // Below 80rem the clip sits inside the open job; above it, back in its
+        // own column. Re-evaluated on resize, so rotating a tablet moves it.
+        function place(i) {
+          if (!stageWrap) return;
+          var target = inline.matches
+            ? jobs[i].querySelector('.job-panel')
+            : stageHome;
+          if (target && stageWrap.parentNode !== target) target.appendChild(stageWrap);
+        }
+        var cap = document.getElementById('stage-cap');
+        var jobs = Array.prototype.slice.call(document.querySelectorAll('.job'));
+        var still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+        function show(i) {
+          jobs.forEach(function (j, k) {
+            j.dataset.open = k === i ? 'true' : 'false';
+            j.querySelector('.job-head').setAttribute('aria-expanded', k === i ? 'true' : 'false');
+          });
+          place(i);
+          current = i;
+          cap.innerHTML = CAPS[i];
+          vid.poster = POSTER[i];
+          vid.alt = jobs[i].querySelector('.job-title').textContent;
+          // Reduced motion: hold the poster, never fetch or play the clip.
+          if (still) { vid.removeAttribute('src'); vid.load(); return; }
+          vid.src = SRC[i];
+          var go = vid.play();
+          if (go && go.catch) { go.catch(function () {}); }
+        }
+
+        // Rotating a tablet crosses the breakpoint without a reload, so the
+        // clip has to change sides when the query changes, not only on click.
+        var onChange = function () { place(current); };
+        if (inline.addEventListener) inline.addEventListener('change', onChange);
+        else if (inline.addListener) inline.addListener(onChange);
+
+        jobs.forEach(function (j, i) {
+          j.querySelector('.job-head').addEventListener('click', function () { show(i); });
+        });
+        show(0);
+      })();
+    </script>
+  </section>
+
+  <section>
+    <p class="sig">One file</p>
+    <h2><em>No data</em> is tracked</h2>
+    <p class="lede">One file. Open it and everything it needs is already there. Nothing more to track down afterward.</p>
+    <div class="install">
+      <div class="install-steps">
+    <div class="os-tabs" role="tablist" aria-label="Choose your operating system">
+      <button class="os-tab" role="tab" type="button" data-os="mac" aria-selected="false">macOS</button>
+      <button class="os-tab" role="tab" type="button" data-os="windows" aria-selected="false">Windows</button>
+      <button class="os-tab" role="tab" type="button" data-os="linux" aria-selected="false">Linux</button>
+    </div>
+
+    <ol class="steps" data-panel="mac" hidden>
+      <li class="step">
+        <h3>Download the .dmg</h3>
+        <p>Apple silicon or Intel, whichever this Mac is. The download page picks for you.</p>
+      </li>
+      <li class="step">
+        <h3>Drag PaperNinja into Applications</h3>
+        <p>The usual dmg window. Nothing installs in the background.</p>
+      </li>
+      <li class="step">
+        <h3>Open it once and let macOS refuse</h3>
+        <p>PaperNinja has no Apple developer certificate yet, so the first open is blocked: <em>&ldquo;Apple could not verify PaperNinja is free of malware.&rdquo;</em> Click Done. This step matters, because the button that lets you past it does not exist until macOS has actually stopped you.</p>
+      </li>
+      <li class="step">
+        <h3>Now go to Privacy &amp; Security</h3>
+        <p>System Settings, then Privacy &amp; Security, and scroll to the Security section at the bottom. <strong>Open Anyway</strong> is waiting there, naming PaperNinja. Do this within an hour of being blocked or the button expires and you start again.</p>
+      </li>
+      <li class="step">
+        <h3>Open it a second time</h3>
+        <p>The same warning appears, now with an <strong>Open Anyway</strong> button in it. Click that, and macOS remembers the decision. You never do any of this again.</p>
+      </li>
+      <li class="step">
+        <h3>If it says &ldquo;damaged&rdquo; instead</h3>
+        <p>Some Macs show <em>&ldquo;PaperNinja is damaged and can&rsquo;t be opened&rdquo;</em> and offer only
+           the Trash, with no Open Anyway anywhere. It is not damaged: macOS is refusing the
+           download tag on an app it cannot trace to a paid developer account. Remove that one
+           tag and open it normally:</p>
+        <div class="cmd">
+          <code>xattr -dr com.apple.quarantine /Applications/PaperNinja.app</code>
+          <button type="button" data-copy="xattr -dr com.apple.quarantine /Applications/PaperNinja.app">Copy</button>
+        </div>
+        <p style="margin-top:.7rem">Drag the app into Applications first, or that path points at nothing.</p>
+        <p style="margin-top:.7rem"><strong>What that command does, exactly.</strong>
+           <span class="mono">xattr</span> edits extended attributes &mdash; small labels macOS
+           attaches to files. <span class="mono">-d com.apple.quarantine</span> deletes one named
+           label: the &ldquo;this came from the internet&rdquo; tag.
+           <span class="mono">-r</span> applies it through the bundle, because an app is a folder.
+           The last argument is the only thing it touches.</p>
+        <p style="margin-top:.7rem"><strong>What it does not do.</strong> There is no
+           <span class="mono">sudo</span>, so it needs no admin rights and cannot change anything
+           outside your own files. It does not turn Gatekeeper off, and it does not touch any other
+           app &mdash; every other download on your Mac stays checked exactly as before. If you ever
+           see advice to run <span class="mono">spctl --master-disable</span>, that one <em>does</em>
+           disable the check for everything you install afterwards. Do not run it, for us or for
+           anyone.</p>
+        <p style="margin-top:.7rem">You can see the label before and after, if you would rather
+           check than trust:</p>
+        <div class="cmd">
+          <code>xattr /Applications/PaperNinja.app</code>
+          <button type="button" data-copy="xattr /Applications/PaperNinja.app">Copy</button>
+        </div>
+      </li>
+      <li class="step">
+        <h3>That is the whole setup</h3>
+        <p>No account, no key, nothing to configure. It opens on the tool grid.</p>
+      </li>
+    </ol>
+
+    <ol class="steps" data-panel="windows" hidden>
+      <li class="step">
+        <h3>Download the .exe</h3>
+        <p>One installer, everything already inside it.</p>
+      </li>
+      <li class="step">
+        <h3>Run it, and let SmartScreen stop you</h3>
+        <p>Windows shows &ldquo;Windows protected your PC&rdquo; for installers it has not seen signed before, and offers only Don&rsquo;t run. Click <strong>More info</strong>, and a <strong>Run anyway</strong> button appears beside it. Like the Mac, the button that lets you past does not exist until Windows has actually stopped you.</p>
+      </li>
+      <li class="step">
+        <h3>Next three times</h3>
+        <p>A welcome screen, then where to install it, then the install itself. The defaults are right, so there is nothing to decide.</p>
+      </li>
+      <li class="step">
+        <h3>Finish, and it opens</h3>
+        <p>The last screen has Run PaperNinja and Create desktop shortcut already ticked. Click Finish and the app starts.</p>
+      </li>
+      <li class="step">
+        <h3>That is the whole setup</h3>
+        <p>No account, no key, nothing to configure. It opens on the tool grid.</p>
+      </li>
+    </ol>
+
+    <ol class="steps" data-panel="linux" hidden>
+      <li class="step">
+        <h3>Download the .deb or the .AppImage</h3>
+        <p>Debian and Ubuntu take the .deb. Anything else, use the AppImage. Both
+           are 64-bit x86, which Debian calls <span class="mono">amd64</span> &mdash;
+           that is the right file for an Intel processor as well as an AMD one, and
+           the name is only historical. There is no ARM build for Linux yet, so a
+           Raspberry Pi or an ARM virtual machine has nothing to install.</p>
+      </li>
+      <li class="step">
+        <h3>Point the terminal at the file first</h3>
+        <p>The commands below name the file rather than a full path, so the terminal
+           has to be in the folder you downloaded into &mdash; usually Downloads:</p>
+        <div class="cmd">
+          <code>cd ~/Downloads</code>
+          <button type="button" data-copy="cd ~/Downloads">Copy</button>
+        </div>
+        <p style="margin-top:.7rem">Skip this and apt says
+           <span class="mono">E: Unsupported file &hellip; given on command line</span>.
+           That wording is misleading: it means apt could not find the file, not that
+           anything is wrong with it. Giving the whole path works from anywhere and
+           avoids the question:</p>
+        <div class="cmd">
+          <code>sudo apt install ~/Downloads/PaperNinja_1.0.1_amd64.deb</code>
+          <button type="button" data-copy="sudo apt install ~/Downloads/PaperNinja_1.0.1_amd64.deb">Copy</button>
+        </div>
+      </li>
+      <li class="step">
+        <h3>Install the .deb, or update to it</h3>
+        <div class="cmd">
+          <code>sudo apt install ./PaperNinja_1.0.1_amd64.deb</code>
+          <button type="button" data-copy="sudo apt install ./PaperNinja_1.0.1_amd64.deb">Copy</button>
+        </div>
+        <p style="margin-top:.7rem">The <span class="mono">./</span> is doing real work.
+           Without it apt looks for a package of that name in the archives, finds none,
+           and reports the same unsupported-file error.</p>
+        <p style="margin-top:.7rem"><strong>Updating from an older version is the same
+           command.</strong> apt sees the newer version and replaces the old one; your
+           settings stay. Double-clicking the file opens Ubuntu&rsquo;s App Center instead,
+           which labels every .deb from outside Ubuntu&rsquo;s own store
+           &ldquo;potentially unsafe&rdquo;, and when an older PaperNinja is already
+           installed it only shows <strong>Installed</strong> and does nothing. Use the
+           terminal. To see which version you have:</p>
+        <div class="cmd">
+          <code>dpkg -s paper-ninja | grep Version</code>
+          <button type="button" data-copy="dpkg -s paper-ninja | grep Version">Copy</button>
+        </div>
+      </li>
+      <li class="step">
+        <h3>Or just run the AppImage</h3>
+        <p>Nothing is installed and nothing is added to your system. Make it
+           executable, then run it:</p>
+        <div class="cmd">
+          <code>chmod +x PaperNinja_1.0.1_amd64.AppImage</code>
+          <button type="button" data-copy="chmod +x PaperNinja_1.0.1_amd64.AppImage">Copy</button>
+        </div>
+        <div class="cmd" style="margin-top:.5rem">
+          <code>./PaperNinja_1.0.1_amd64.AppImage</code>
+          <button type="button" data-copy="./PaperNinja_1.0.1_amd64.AppImage">Copy</button>
+        </div>
+      </li>
+      <li class="step">
+        <h3>Open it. No warning to click through</h3>
+        <p>Linux has no equivalent of Gatekeeper or SmartScreen, so once installed it
+           simply starts. The only warning you may meet is App Center&rsquo;s, above, and
+           the terminal install skips it.</p>
+      </li>
+    </ol>
+      </div>
+
+      <!-- One per platform, switched by the same handler that switches the
+           steps. Decorative, so no alt text: the steps beside it say everything
+           this says, and the joke is only worth having if it costs a screen
+           reader nothing. Apple, a window, a penguin -- each is the ninja
+           holding the thing that platform is known by. -->
+      <figure class="install-art" aria-hidden="true">
+        <img src="media/ninja-mac.png"     data-os="mac"     width="722" height="691" alt="" loading="lazy" decoding="async" hidden>
+        <img src="media/ninja-windows.png" data-os="windows" width="760" height="760" alt="" loading="lazy" decoding="async" hidden>
+        <img src="media/ninja-linux.png"   data-os="linux"   width="706" height="699" alt="" loading="lazy" decoding="async" hidden>
+      </figure>
+    </div>
+  </section>
+
+  <section>
+    <p class="sig">Worth knowing</p>
+    <h2><em>Before</em> you download</h2>
+    <p class="lede">The things a download page usually leaves out.</p>
+    <div class="notes">
+      <div>
+        <h3>One tool needs help</h3>
+        <p>EPUB and MOBI use Calibre; some document formats use LibreOffice. The other eighteen tools need nothing.</p>
+      </div>
+      <div>
+        <h3>Two features are macOS-only</h3>
+        <p>Reading scans and HEIC photos depend on what the operating system provides. PaperNinja hides what it cannot run.</p>
+      </div>
+      <div>
+        <h3>Nine languages, all AI-assisted</h3>
+            <p>Every one of them, English included, was written with AI help. Warnings about losing files are translated everywhere or nowhere, never half.</p>
+      </div>
+      <div>
+        <h3>Built by one person</h3>
+        <p>The issue tracker is read by whoever wrote the code. Most of what is here came from bugs reported there.</p>
+      </div>
+      <div>
+        <h3>Not signed. Not yet.</h3>
+        <p>This is still a hobby project. One person, no revenue yet. A developer certificate is a real cost every year, and it&rsquo;s next once downloads show there&rsquo;s enough interest to justify it.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <p class="sig">Last but not least</p>
+    <h2>If it <em>saved</em> you an afternoon</h2>
+    <p class="lede">
+      PaperNinja is free, MIT licensed, and collects nothing: no analytics, no
+      telemetry, no crash reports. That is the point of it, and it has one
+      consequence worth admitting: <strong>there is no way for me to know whether
+      anyone is using this.</strong> Downloads are a number; they do not say
+      whether the thing worked.
+    </p>
+
+    <div class="support">
+      <a class="support-card" href="https://github.com/shyhunter/PaperNinja" target="_blank" rel="noopener">
+        <svg class="support-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/></svg>
+        <h3>Star it on GitHub</h3>
+        <p>
+          Free, takes a second, and it is the only signal that reaches me. It also
+          puts PaperNinja in front of people searching for a tool that does not want
+          their data.
+        </p>
+        <span class="support-go">github.com/shyhunter/PaperNinja →</span>
+      </a>
+
+      <a class="support-card" href="https://github.com/users/shyhunter/projects/9" target="_blank" rel="noopener">
+        <svg class="support-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-4.553 2.277a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.381V6.618a1 1 0 0 1 .553-.894l4.553-2.277a2 2 0 0 1 1.788 0z"/><path d="M15 5.764v15"/><path d="M9 3.236v15"/></svg>
+        <h3>Read the roadmap</h3>
+        <p>
+          PaperNinja is still being built, and it happens in the open: what is
+          coming next, what was decided against, and the reasoning either way.
+          If the tool you need is not on it yet, that is worth telling me.
+        </p>
+        <span class="support-go">the roadmap →</span>
+      </a>
+
+      <a class="support-card" href="https://buymeacoffee.com/shyhunter" target="_blank" rel="noopener">
+        <svg class="support-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 2v2"/><path d="M14 2v2"/><path d="M16 8a1 1 0 0 1 1 1v8a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1h14a4 4 0 1 1 0 8h-1"/><path d="M6 2v2"/></svg>
+        <h3>Buy me a coffee</h3>
+        <p>
+          Entirely optional and it changes nothing: there is no paid tier to
+          unlock, and there never will be. It pays for the certificates that stop
+          your operating system calling this app damaged.
+        </p>
+        <span class="support-go">buymeacoffee.com/shyhunter →</span>
+      </a>
+    </div>
+
+    <p class="lede" style="margin:1.4rem 0 0">
+      Reporting something that broke is worth more than both, and it happens in
+      <a href="https://github.com/shyhunter/PaperNinja/discussions">Discussions</a> rather than an inbox &mdash; ask a question,
+      suggest a tool, or say what went wrong. Most of what is in this release
+      came from someone taking the time to do exactly that.
+    </p>
+  </section>
+
+  <footer>
+    <nav>
+      <a href="https://github.com/shyhunter/PaperNinja/wiki">Docs</a>
+      <a href="https://github.com/shyhunter/PaperNinja/issues">Report</a>
+      <a href="https://github.com/shyhunter/PaperNinja/discussions">Discuss</a>
+      <a href="https://github.com/users/shyhunter/projects/9">Roadmap</a>
+      <a href="https://github.com/shyhunter/PaperNinja">Source</a>
+    </nav>
+    <span>&copy; 2026 PaperNinja Contributors &middot; MIT licensed</span>
+  </footer>
+
+</div>
+
+<script>
+  (function () {
+    var tabs = Array.prototype.slice.call(document.querySelectorAll('.os-tab'));
+    var panels = Array.prototype.slice.call(document.querySelectorAll('.steps[data-panel]'));
+    if (!tabs.length) return;
+
+    var arts = Array.prototype.slice.call(document.querySelectorAll('.install-art img'));
+
+    function show(os) {
+      tabs.forEach(function (t) { t.setAttribute('aria-selected', String(t.dataset.os === os)); });
+      panels.forEach(function (pnl) { pnl.hidden = pnl.dataset.panel !== os; });
+      arts.forEach(function (a) { a.hidden = a.dataset.os !== os; });
+    }
+
+    // Read only. navigator.userAgent never leaves the page, and this adds no
+    // network request -- the two in the table above are still the only two.
+    var ua = navigator.userAgent || '';
+    var detected = /Mac|iPhone|iPad/.test(ua) ? 'mac' : /Win/.test(ua) ? 'windows' : 'linux';
+    show(detected);
+
+    tabs.forEach(function (t) {
+      t.addEventListener('click', function () { show(t.dataset.os); });
+    });
+
+    document.querySelectorAll('[data-copy]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var text = btn.dataset.copy;
+        var done = function (ok) {
+          btn.textContent = ok ? 'Copied' : 'Select it';
+          setTimeout(function () { btn.textContent = 'Copy'; }, 1600);
+        };
+        try {
+          navigator.clipboard.writeText(text).then(function () { done(true); }, function () { done(false); });
+        } catch (e) {
+          done(false);
+        }
+      });
+    });
+  })();
+</script>
+<script>
+  // Autoplay is an accessibility problem for anyone who has asked the system
+  // for less motion, and no media query can stop a video that is already
+  // playing. The controls stay, so the demo is still watchable on request.
+  (function () {
+    var v = document.getElementById('demo');
+    if (!v) return;
+    try {
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        v.autoplay = false;
+        v.pause();
+      }
+    } catch (e) {
+      /* matchMedia missing: leave the video as authored */
+    }
+  })();
+</script>
+
+<script>
+  (function () {
+    // Name the platform the visitor is actually on. Same read-only
+    // navigator.userAgent as the install steps below, so this still adds no
+    // network request: the two in the table above remain the only two.
+    var btn = document.getElementById('dl');
+    var note = document.getElementById('dl-note');
+    var getNote = document.getElementById('get-note');
+    var cards = document.getElementById('get');
+    if (!btn || !cards) return;
+
+    var ua = navigator.userAgent || '';
+
+    // Phones and tablets first, because they are easy to mistake for a desktop
+    // we ship for: Android's user agent contains "Linux", and iOS contains
+    // "iPhone"/"iPad" beside Mac-like tokens. Either would otherwise be told a
+    // build is "probably yours" when that machine cannot run any of them. They
+    // keep the plain label and an unmarked set of cards, which is the honest
+    // answer. (An iPad on iPadOS 13+ reports plain "Macintosh" and is genuinely
+    // indistinguishable from a Mac. Nothing in the user agent separates them.)
+    if (/Android|iPhone|iPad|iPod|Mobile/.test(ua)) return;
+
+    var os = /Mac/.test(ua) ? 'mac'
+           : /Win/.test(ua) ? 'windows'
+           : /Linux|X11/.test(ua) ? 'linux' : null;
+    if (!os) return;
+
+    var card = cards.querySelector('.get-card[data-os="' + os + '"]');
+    if (card) card.setAttribute('data-here', '');
+
+    // Windows has exactly one file, so the button is the download. macOS and
+    // Linux have two apiece and the user agent cannot say which, so their
+    // button goes to the cards instead of picking for them -- the wrong Mac
+    // build reports itself as "damaged", the same words as the Gatekeeper
+    // refusal, which sends people to a fix that cannot work.
+    if (os === 'windows') {
+      var one = card && card.querySelector('li[data-pick] a');
+      if (one) btn.href = one.href;
+      btn.textContent = 'Download for Windows';
+      if (note) note.textContent = 'The .exe installer, 64-bit. Every build is listed below.';
+      return;
+    }
+
+    var copy = {
+      mac:   ['Download for macOS', '',
+              'Apple silicon unless your Mac is from 2020 or earlier.'],
+      linux: ['Download for Linux', 'Two Linux packages, and a browser cannot tell your distribution.',
+              '.deb for Debian and Ubuntu, .AppImage for everything else.']
+    };
+    btn.textContent = copy[os][0];
+    btn.setAttribute('data-jump', '');
+    if (note && copy[os][1]) note.textContent = copy[os][1];
+    if (getNote) getNote.textContent = copy[os][2];
+  })();
+
+  (function () {
+    // Tools are filed by what you start with, so each lands in exactly one
+    // bucket and the counts on the pills add up to the whole grid.
+    var pills = Array.prototype.slice.call(document.querySelectorAll('.filter'));
+    var cards = Array.prototype.slice.call(document.querySelectorAll('.card[data-cat]'));
+    var status = document.getElementById('filter-status');
+    if (!pills.length || !cards.length) return;
+
+    function apply(cat) {
+      var shown = 0;
+      cards.forEach(function (c) {
+        var hit = cat === 'all' || c.dataset.cat === cat;
+        c.hidden = !hit;
+        if (hit) shown++;
+      });
+      pills.forEach(function (p) {
+        p.setAttribute('aria-pressed', String(p.dataset.cat === cat));
+      });
+      if (status) {
+        status.textContent = cat === 'all'
+          ? 'Showing all ' + shown + ' tools.'
+          : 'Showing ' + shown + ' of ' + cards.length + ' tools.';
+      }
+    }
+
+    pills.forEach(function (p) {
+      p.addEventListener('click', function () { apply(p.dataset.cat); });
+    });
+  })();
+</script>
+
+<script>
+  // Icons are inlined at build time, so there is nothing to initialise and
+  // nothing to fail. The runtime check this replaces could only ever warn
+  // after the icons had already failed to appear.
+</script>
+</body></html>

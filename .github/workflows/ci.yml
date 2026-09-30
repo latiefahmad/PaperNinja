@@ -1,0 +1,459 @@
+name: CI
+
+on:
+  # No `push:` trigger at all, deliberately.
+  #
+  # Branch protection requires the PR branch to be up to date with main before
+  # merging, so the pull_request run already tested the exact tree that lands.
+  # Re-running the whole suite on the merge commit paid for the same result
+  # twice. Combined with dropping `push: ['**']` earlier, a change now costs one
+  # CI pass instead of three.
+  #
+  # Cover for the gap: nothing runs if someone pushes straight to main (admins
+  # can, by design). Use `workflow_dispatch` if that ever needs checking.
+  pull_request:
+    branches: ['**']
+  workflow_dispatch:
+  release:
+    types: [created]
+
+# A new push to the same branch supersedes the previous run.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  # Detect which areas of the codebase changed to enable smart E2E triggering.
+  # Runs on all events, but only applies filtering on PRs (other events always show as changed).
+  # Currently no job consumes these outputs: the e2e jobs no longer run on
+  # pull_request (see the note on e2e-pdf). Kept so path-based gating can be
+  # wired straight back up when those suites are revived.
+  detect-changes:
+    runs-on: ubuntu-22.04
+    outputs:
+      pdf-changed: ${{ steps.filter.outputs.pdf }}
+      image-changed: ${{ steps.filter.outputs.image }}
+      rust-changed: ${{ steps.filter.outputs.rust }}
+      code-changed: ${{ steps.filter.outputs.code }}
+      deps-changed: ${{ steps.filter.outputs.deps }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Detect file changes (PR only; non-PR events always trigger E2E)
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4
+        id: filter
+        with:
+          filters: |
+            pdf:
+              - '.github/workflows/ci.yml'
+              - 'src/e2e/**'
+              - 'src/e2e/tests/pdf-flows.test.ts'
+              - 'src/lib/pdfProcessor*'
+              - 'src-tauri/src/lib.rs'
+            image:
+              - '.github/workflows/ci.yml'
+              - 'src/e2e/**'
+              - 'src/e2e/tests/image-flows.test.ts'
+              - 'src/lib/imageProcessor*'
+              - 'src-tauri/src/lib.rs'
+            rust:
+              - '.github/workflows/ci.yml'
+              - 'src-tauri/**'
+            # Anything that can change what validate asserts. Deliberately wider
+            # than "frontend": version:check compares package.json against
+            # tauri.conf.json and Cargo.toml, so src-tauri counts too. What is
+            # left out is only prose — docs and loose markdown.
+            # The notices file is generated from the two lockfiles and nothing
+            # else, so this is exactly when it can go stale.
+            deps:
+              - '.github/workflows/ci.yml'
+              - 'src-tauri/Cargo.lock'
+              - 'package-lock.json'
+              - 'scripts/generate-notices.mjs'
+            code:
+              - '.github/workflows/**'
+              - '.github/dependabot.yml'
+              - 'src/**'
+              - 'src-tauri/**'
+              - 'scripts/**'
+              - 'test-fixtures/**'
+              - 'package.json'
+              - 'package-lock.json'
+              - 'tsconfig*.json'
+              - 'vite.config.ts'
+              - 'vite.config.harness.ts'
+              - 'playwright.config.ts'
+              - 'vitest.config.ts'
+              - 'eslint.config.js'
+              - 'index.html'
+
+  validate:
+    runs-on: ubuntu-22.04
+    needs: [detect-changes]
+    # Steps are gated, not the job — a job-level `if` reports "skipped", which a
+    # required status check never accepts, and the PR would be unmergeable.
+    # See the same note on rust-checks.
+
+    steps:
+      - name: Checkout
+        if: needs.detect-changes.outputs.code-changed != 'false'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Setup Node.js
+        if: needs.detect-changes.outputs.code-changed != 'false'
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install frontend dependencies
+        if: needs.detect-changes.outputs.code-changed != 'false'
+        run: npm ci
+
+      - name: Version consistency check
+        if: needs.detect-changes.outputs.code-changed != 'false'
+        run: npm run version:check
+
+      - name: Third-party notices are current
+        if: needs.detect-changes.outputs.deps-changed != 'false'
+        run: npm run notices:check
+
+      # tauri build refuses to run when a Tauri npm package and its Rust crate
+      # differ in major.minor, and only release.yml runs tauri build. Checked
+      # here so a one-sided dependency bump fails its PR, not the next release.
+      - name: Tauri npm and Rust versions agree
+        if: needs.detect-changes.outputs.deps-changed != 'false'
+        run: npm run tauri:versions:check
+
+      - name: TypeScript type check
+        if: needs.detect-changes.outputs.code-changed != 'false'
+        run: npx tsc --noEmit
+
+      - name: Unit tests
+        if: needs.detect-changes.outputs.code-changed != 'false'
+        run: npm run test
+
+  # The layer that renders the app. Everything else on a PR runs in jsdom, which
+  # computes no CSS -- so a control could be present, correct and below the
+  # window, and nothing here would object. That happened twice (D2, then R1).
+  browser-tests:
+    runs-on: ubuntu-22.04
+    needs: [detect-changes]
+    # Steps are gated, not the job -- a job-level `if` reports "skipped", which a
+    # required status check never accepts. Same note as validate and rust-checks.
+
+    steps:
+      - name: Checkout
+        if: needs.detect-changes.outputs.code-changed != 'false'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Setup Node.js
+        if: needs.detect-changes.outputs.code-changed != 'false'
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install frontend dependencies
+        if: needs.detect-changes.outputs.code-changed != 'false'
+        run: npm ci
+
+      # The browser binary is ~130 MB and unchanged between runs; downloading it
+      # every time is most of what this job costs. Keyed on the lockfile, so a
+      # Playwright bump fetches a matching browser rather than reusing a stale one.
+      - name: Cache the Playwright browser
+        if: needs.detect-changes.outputs.code-changed != 'false'
+        id: pw-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
+      - name: Install Chromium and its system libraries
+        if: needs.detect-changes.outputs.code-changed != 'false' && steps.pw-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+
+      # The cache carries the browser but not the apt packages it links against,
+      # so those are still installed on a hit. Only chromium: the suite declares
+      # one project and pulling the other engines would triple the cost.
+      - name: Install system libraries only
+        if: needs.detect-changes.outputs.code-changed != 'false' && steps.pw-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
+
+      - name: Browser tests
+        if: needs.detect-changes.outputs.code-changed != 'false'
+        run: npm run test:browser
+
+      # The point of the walkthrough suite is that reviewing a change means
+      # watching the app do the thing, instead of repeating twenty click-throughs
+      # by hand. That only works if a passing run keeps its recordings, so these
+      # are uploaded whether the job went green or red. ~5 MB for all of them.
+      - name: Upload flow videos and step timings
+        if: always() && needs.detect-changes.outputs.code-changed != 'false'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: flow-walkthrough
+          path: |
+            test-results/**/*.webm
+            .e2e-results/step-timings/
+          retention-days: 7
+          if-no-files-found: ignore
+
+      # A failure here is a layout or geometry claim, and the trace is the only
+      # readable account of it -- there is no screen for anyone to look at.
+      - name: Upload traces from failures
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: playwright-traces
+          path: test-results/
+          retention-days: 7
+
+  rust-checks:
+    runs-on: ubuntu-22.04
+    needs: [detect-changes]
+    # The job always RUNS so its required status check reports; the steps below
+    # are what get skipped. A job-level `if` would report "skipped", which a
+    # required check treats as never-satisfied, wedging the PR forever.
+    # `!= 'false'` rather than `== 'true'` so non-PR events, where paths-filter
+    # produces no output, still run everything.
+
+    steps:
+      - name: Checkout
+        if: needs.detect-changes.outputs.rust-changed != 'false'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Install Rust stable
+        if: needs.detect-changes.outputs.rust-changed != 'false'
+        uses: dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c # stable
+
+      - name: Install sccache
+        if: needs.detect-changes.outputs.rust-changed != 'false'
+        uses: mozilla-actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba # v0.0.11
+
+      - name: Rust cache
+        if: needs.detect-changes.outputs.rust-changed != 'false'
+        uses: swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+        with:
+          workspaces: src-tauri -> target
+
+      - name: Install Linux system dependencies
+        if: needs.detect-changes.outputs.rust-changed != 'false'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - name: Cargo check
+        if: needs.detect-changes.outputs.rust-changed != 'false'
+        run: cd src-tauri && cargo check
+        env:
+          RUSTC_WRAPPER: sccache
+
+      - name: Clippy lint
+        if: needs.detect-changes.outputs.rust-changed != 'false'
+        run: cd src-tauri && cargo clippy -- -D warnings
+        env:
+          RUSTC_WRAPPER: sccache
+
+  rust-integration:
+    runs-on: ubuntu-22.04
+    needs: [detect-changes]
+    # See the note on rust-checks.
+
+    steps:
+      - name: Checkout
+        if: needs.detect-changes.outputs.rust-changed != 'false'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Install Rust stable
+        if: needs.detect-changes.outputs.rust-changed != 'false'
+        uses: dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c # stable
+
+      - name: Install sccache
+        if: needs.detect-changes.outputs.rust-changed != 'false'
+        uses: mozilla-actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba # v0.0.11
+
+      - name: Rust cache
+        if: needs.detect-changes.outputs.rust-changed != 'false'
+        uses: swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+        with:
+          workspaces: src-tauri -> target
+
+      - name: Install system dependencies
+        if: needs.detect-changes.outputs.rust-changed != 'false'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf pkg-config libssl-dev
+
+      - name: Run Rust integration tests
+        if: needs.detect-changes.outputs.rust-changed != 'false'
+        run: cd src-tauri && cargo test --lib -- --test-threads=4
+        env:
+          RUSTC_WRAPPER: sccache
+
+  e2e-pdf:
+    runs-on: ubuntu-22.04
+    needs: [validate, rust-checks]
+    # NOTE: deliberately NOT run on pull_request. These WebDriver suites are
+    # blocked by an upstream panic in tauri-plugin-webdriver-automation 0.1.3:
+    # `resolve()` does `.remove(&id).expect("no pending script with that id")`
+    # while holding the pending-scripts Mutex, so a late or duplicate script
+    # result poisons that Mutex and every later request fails with
+    # "lock poisoned" — the session never recovers. They have not passed in any
+    # recent CI run. PR coverage for these flows comes from rust-integration.
+    # Still runnable on demand via the Actions "Run workflow" button, and on
+    # release.
+    # Not when the Dependabot notices workflow dispatches CI to re-run the PR
+    # checks: that stands in for a pull_request run, which never includes these.
+    if: |
+      (github.event_name == 'workflow_dispatch' && github.triggering_actor != 'github-actions[bot]') ||
+      github.event_name == 'release'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c # stable
+
+      - name: Install sccache
+        uses: mozilla-actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba # v0.0.11
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+        with:
+          workspaces: src-tauri -> target
+
+      - name: Install system dependencies (webkit + GS)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Install tauri-wd WebDriver
+        run: cargo install tauri-webdriver-automation
+        env:
+          RUSTC_WRAPPER: sccache
+
+      - name: Build Tauri app (debug, for webdriver-automation plugin)
+        run: npx tauri build --debug --features e2e --no-bundle
+        env:
+          RUSTC_WRAPPER: sccache
+
+      - name: Prepare E2E fixtures
+        run: |
+          set -euo pipefail
+          node src/e2e/fixtures/generate-e2e-fixtures.mjs
+          cp -r test-fixtures /tmp/test-fixtures
+          cp -r test-fixtures-e2e /tmp/test-fixtures-e2e
+          mkdir -p /tmp/e2e-output
+
+      - name: Run PDF E2E tests
+        run: xvfb-run npm run test:e2e:pdf
+        env:
+          WEBKIT_DISABLE_DMABUF_RENDERER: '1'
+          E2E_FIXTURES_DIR: /tmp/test-fixtures-e2e
+          E2E_REAL_FIXTURES_DIR: /tmp/test-fixtures
+          E2E_OUTPUT_DIR: /tmp/e2e-output
+
+      - name: Upload E2E screenshots on failure
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: e2e-pdf-screenshots
+          path: .e2e-artifacts/screenshots/
+          retention-days: 7
+
+  e2e-image:
+    runs-on: ubuntu-22.04
+    needs: [validate, rust-checks]
+    # NOTE: deliberately NOT run on pull_request. These WebDriver suites are
+    # blocked by an upstream panic in tauri-plugin-webdriver-automation 0.1.3:
+    # `resolve()` does `.remove(&id).expect("no pending script with that id")`
+    # while holding the pending-scripts Mutex, so a late or duplicate script
+    # result poisons that Mutex and every later request fails with
+    # "lock poisoned" — the session never recovers. They have not passed in any
+    # recent CI run. PR coverage for these flows comes from rust-integration.
+    # Still runnable on demand via the Actions "Run workflow" button, and on
+    # release.
+    # Not when the Dependabot notices workflow dispatches CI to re-run the PR
+    # checks: that stands in for a pull_request run, which never includes these.
+    if: |
+      (github.event_name == 'workflow_dispatch' && github.triggering_actor != 'github-actions[bot]') ||
+      github.event_name == 'release'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c # stable
+
+      - name: Install sccache
+        uses: mozilla-actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba # v0.0.11
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+        with:
+          workspaces: src-tauri -> target
+
+      - name: Install system dependencies (webkit, no GS)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Install tauri-wd WebDriver
+        run: cargo install tauri-webdriver-automation
+        env:
+          RUSTC_WRAPPER: sccache
+
+      - name: Build Tauri app (debug, for webdriver-automation plugin)
+        run: npx tauri build --debug --features e2e --no-bundle
+        env:
+          RUSTC_WRAPPER: sccache
+
+      - name: Prepare E2E fixtures
+        run: |
+          set -euo pipefail
+          node src/e2e/fixtures/generate-e2e-fixtures.mjs
+          cp -r test-fixtures /tmp/test-fixtures
+          cp -r test-fixtures-e2e /tmp/test-fixtures-e2e
+          mkdir -p /tmp/e2e-output
+
+      - name: Run Image E2E tests
+        run: xvfb-run npm run test:e2e:image
+        env:
+          WEBKIT_DISABLE_DMABUF_RENDERER: '1'
+          E2E_FIXTURES_DIR: /tmp/test-fixtures-e2e
+          E2E_REAL_FIXTURES_DIR: /tmp/test-fixtures
+          E2E_OUTPUT_DIR: /tmp/e2e-output
+
+      - name: Upload E2E screenshots on failure
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: e2e-image-screenshots
+          path: .e2e-artifacts/screenshots/
+          retention-days: 7

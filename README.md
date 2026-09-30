@@ -1,0 +1,304 @@
+# PaperNinja
+
+## Your local document toolkit -> private, fast, offline.
+
+<p align="center">
+  <img src="docs/demo.gif" alt="PaperNinja's PDF editor with a document open, moving through the watermark, page numbers, make searchable, redact and repair panels" width="760">
+</p>
+
+<p align="center">
+  <a href="#download"><img src="https://img.shields.io/badge/-Download-2ea44f?style=for-the-badge" alt="Download"></a>
+  <a href="https://github.com/users/shyhunter/projects/9"><img src="https://img.shields.io/badge/-Roadmap-0969da?style=for-the-badge" alt="Roadmap"></a>
+  <a href="https://github.com/shyhunter/PaperNinja/wiki"><img src="https://img.shields.io/badge/-Wiki-8A2BE2?style=for-the-badge" alt="Wiki"></a>
+</p>
+
+<br>
+
+---
+
+<p align="center">
+  <img src="docs/screenshots/dashboard-light.png" alt="PaperNinja dashboard in the day theme: favourites across the top, then the PDF tool grid" width="100%">
+</p>
+<p align="center">
+  <img src="docs/screenshots/dashboard-dark.png" alt="The same dashboard in the night theme" width="49%">
+  <img src="docs/screenshots/tool-pick-step.png" alt="Compress PDF, step one - open a file, or drop one anywhere on the window" width="49%">
+</p>
+<p align="center">
+  <img src="docs/screenshots/tool-configure-step.png" alt="Compress PDF, step two - compression level, a custom target size, and page resizing" width="49%">
+  <img src="docs/screenshots/tool-select-pages.png" alt="Rotate PDF - selecting pages from a thumbnail grid and turning them left or right" width="49%">
+</p>
+
+Every tool follows the same four-step flow: Pick, Configure, Compare, Save
+-- and the whole app supports both light and dark mode.
+
+---
+
+## Features
+
+PaperNinja ships with **19 tools** across three categories, all running locally on your machine.
+
+**18 of the 19 need nothing installed.** Only document conversion to ebook formats reaches for an external tool; everything else is compiled into the app.
+
+### PDF Tools
+
+- 🗜️ **Compress**: Reduce PDF file size with quality presets
+- 📐 **Resize**: Scale pages to standard or custom dimensions (part of Compress)
+- 🔗 **Merge**: Combine multiple PDFs into one
+- ✂️ **Split**: Extract page ranges into separate files
+- 🔄 **Rotate**: Rotate individual or all pages
+- 🔢 **Page Numbers**: Add page numbers with position/format control
+- 💧 **Watermark**: Overlay text or image watermarks
+- 🖼️ **Crop**: Trim page margins
+- 🗂️ **Organize**: Reorder, delete, or duplicate pages
+- ✍️ **Sign**: Add handwritten, typed, or drawn signatures
+- ⬛ **Redact**: Permanently remove sensitive content
+- 🛠️ **Repair**: Fix corrupted or damaged PDFs
+- 🖼️ **PDF to JPG**: Export PDF pages as JPEG or PNG images
+- 📄 **JPG to PDF**: Convert images into a single PDF document
+- 🔍 **Make Searchable**: Read the text on a scan so it can be searched and copied *(macOS only: see [Platform support](#platform-support))*
+
+### Image Tools
+
+- 🗜️ **Compress**: Reduce image file size with quality control
+- 📐 **Resize**: Scale images to specific dimensions
+- 🔁 **Convert**: Convert between JPG, PNG, and WebP formats
+- 🔄 **Rotate**: Rotate images by any angle
+
+### Document Tools
+
+- 🔀 **Convert**: Turn PDF & DOCX into **Markdown, HTML, JSON, plain text, or DOCX** (structure-preserving, fully offline), plus PDF, EPUB, MOBI and more
+- 📝 **Edit PDF**: Annotate and modify PDF content
+
+> **New in beta.9: structure-preserving conversion.** Turn PDFs and Word documents into clean **Markdown, HTML, JSON, plain text, or DOCX** entirely on-device: no external tools required. Headings, paragraphs, and lists are preserved. Long documents can be split **by chapter** into a `.zip` with one file per chapter, using the PDF's own bookmarks/outline when available (falling back to detected headings).
+
+> **Batch processing.** Drop several files of the same type and run one tool
+> across all of them, with per-file progress and a running total of what was
+> saved. Cancel mid-run and nothing further is started.
+
+> **Available in nine languages.** English, German, French, Spanish, Turkish,
+> Italian, Dutch, Polish and European Portuguese. PaperNinja follows your
+> operating system's language on first run and remembers an explicit choice.
+> The eight translations beyond English are community-quality and still under
+> review: if something reads wrongly, [tell us](https://github.com/shyhunter/PaperNinja/issues/new/choose).
+
+---
+
+## Roadmap
+
+**[The roadmap is public.](https://github.com/users/shyhunter/projects/9)** What is
+being worked on, what is agreed for later, and what has been decided against,
+with the reasoning, not just the verdict.
+
+Items carry the argument that produced them, including the ones decided against:
+the entry on password protection says why it is not coming back, and the
+AI-preparation work says which parts are deliberately out of scope and what
+promise they would break. If you disagree with a call, the
+reasoning is there to disagree with.
+
+---
+
+## Languages
+
+PaperNinja's interface is available in nine languages: English, German, Turkish,
+French, Spanish, Italian, Dutch, Polish and Portuguese.
+
+**All nine were written with AI assistance, English included, and none has been
+reviewed by a professional translator.** They are shipped because a good-enough
+translation beats an English-only interface for most people, but "good enough"
+is a claim worth being honest about rather than quietly hoping nobody notices.
+
+Sentences that warn about losing data, overwriting a file or deleting something
+are treated as a special case: they are either translated everywhere or shipped
+in English everywhere, never half-done, and a test enforces that. A confusing
+warning is worse than a foreign one.
+
+**If a string reads oddly, says the wrong thing, or is missing, please
+[open an issue](https://github.com/shyhunter/PaperNinja/issues).** Corrections from
+native speakers are the most useful contribution this project can receive.
+
+---
+
+## Platform support
+
+Almost everything works identically on macOS, Windows and Linux. Two things do not,
+and PaperNinja hides rather than greys out what it cannot run, so you will not be
+offered a tool that cannot work on your machine:
+
+| Feature | macOS | Windows | Linux |
+|---|---|---|---|
+| **Make Searchable** (OCR) | Yes (Apple Vision) | Not yet | Not yet |
+| **HEIC / HEIF input** | Yes | Only with the HEIF extension installed | Only where the distribution ships libheif |
+
+OCR on Windows and Linux is planned. HEIC is bounded by patent licensing rather
+than effort: PaperNinja never ships an HEVC decoder, and uses the operating
+system's where one is licensed.
+
+---
+
+## Download
+
+<p align="center">
+  <a href="https://github.com/shyhunter/PaperNinja/releases/latest"><img src="https://img.shields.io/github/v/release/shyhunter/PaperNinja?label=version&style=for-the-badge" alt="Latest version"></a>
+</p>
+
+| Platform | Installer | Download |
+|----------|-----------|----------|
+| **Mac (M1/M2/M3/M4)** | .dmg | [Download](https://github.com/shyhunter/PaperNinja/releases/latest) |
+| **Mac (Intel)** | .dmg | [Download](https://github.com/shyhunter/PaperNinja/releases/latest) |
+| **Windows** | .exe | [Download](https://github.com/shyhunter/PaperNinja/releases/latest) |
+| **Linux (AppImage)** | .AppImage | [Download](https://github.com/shyhunter/PaperNinja/releases/latest) |
+| **Linux (Debian/Ubuntu)** | .deb | [Download](https://github.com/shyhunter/PaperNinja/releases/latest) |
+
+The links above always point to the latest release on [GitHub Releases](https://github.com/shyhunter/PaperNinja/releases). Everything you need is included: just install and go.
+
+> **Mac users:** PaperNinja is signed but not yet notarised by Apple, so macOS blocks the first launch. Verified on macOS 26:
+>
+> 1. Open PaperNinja. macOS refuses: _**"PaperNinja" Not Opened**, Apple could not verify..._. Click **Done**. Do not skip this: the override does not exist until macOS has actually blocked you.
+> 2. Go to **System Settings → Privacy & Security** and scroll to **Security** at the bottom. PaperNinja is named there. Click **Open Anyway**. This appears for about an hour after the block, then expires.
+> 3. A second dialog asks **Open "PaperNinja"?** and offers three buttons. ⚠️ **The blue default is "Move to Bin" ("Move to Trash" in US English), which deletes the app.** Click **Open Anyway** instead.
+> 4. Authenticate with Touch ID or an administrator password.
+>
+> macOS remembers the decision and PaperNinja opens normally from then on.
+>
+> If you see the older _"PaperNinja is damaged and can't be opened"_ message, or the hour expired, clear the quarantine flag instead: `xattr -dr com.apple.quarantine /Applications/PaperNinja.app`
+
+> **Windows users:** If you see _"Windows protected your PC"_ (a SmartScreen warning), click **More info**, then **Run anyway**. This happens because the app is not yet signed with a Windows code-signing certificate: it's a cost/trust step still on the roadmap, not a sign of a problem with the installer.
+
+> **Ubuntu / Debian users:** install **and update** the `.deb` from a terminal, in the folder you downloaded it to:
+>
+> ```
+> cd ~/Downloads
+> sudo apt install ./PaperNinja_<version>_amd64.deb
+> ```
+>
+> Updating from an older PaperNinja is the same command: apt replaces the old version and your settings stay. Double-clicking the file opens Ubuntu's App Center instead, which labels every `.deb` from outside Ubuntu's own store _"potentially unsafe"_ and, when an older PaperNinja is already installed, only shows **Installed** and does nothing. `dpkg -s paper-ninja | grep Version` shows which version you have.
+
+### Optional Dependencies
+
+Most tools work out of the box. These are only needed for specific features:
+
+| Dependency | Used For | Install |
+|------------|----------|---------|
+| [LibreOffice](https://www.libreoffice.org/) | DOC, ODT, RTF & PDF-output document conversion | [Download](https://www.libreoffice.org/download/) |
+| [Calibre](https://calibre-ebook.com/) | EPUB/MOBI ebook formats | [Download](https://calibre-ebook.com/download) |
+
+Converting to **Markdown, HTML, JSON, plain text, or DOCX** runs entirely in-app and needs none of these. The optional tools are only used for the other document formats above: without them, those specific formats simply aren't offered.
+
+---
+
+## Privacy
+
+**PaperNinja processes everything on YOUR machine. No uploads, no cloud, no telemetry. Your files never leave your computer.**
+
+All file processing happens locally using native code (qpdf, the Rust `image` crate), optional external apps (LibreOffice, Calibre), and in-app libraries (pdf-lib, pdfjs, mammoth, and the Rust `image` crate). There is no analytics and no tracking, and your documents never leave your machine. PaperNinja makes two, and only two, network calls, neither of which sends any data about you or your files: on launch, a request to GitHub's public API to check whether a newer version is available; and, only when you open the About dialog, a request to fetch the current feedback contact address from a JSON file on GitHub, so it can be updated without shipping a new release.
+
+### A note on AI
+
+PaperNinja has no AI features. There is no chatbot and no assistant, no model file
+is shipped with the app, and nothing you open is sent anywhere to be processed
+or used as training data.
+
+**Make Searchable** is the one tool that might suggest otherwise, since it reads
+the text off a scanned page. On macOS it does that through Apple's Vision
+framework, the same text recognition built into Preview and Photos. PaperNinja
+bundles no recognition engine of its own, and the work happens on your machine
+like everything else here.
+
+This is also why the transparency duties in Article 50 of the EU AI Act, in
+force since 2 August 2026, do not attach to PaperNinja: it does not converse with
+you, it does not generate synthetic content, and it does no biometric or emotion
+recognition. That is our reading of the regulation rather than legal advice, and
+it is written down here so the reasoning is visible and can be challenged.
+
+## Troubleshooting
+
+<details>
+<summary>See details</summary>
+
+### LibreOffice / Calibre not found
+
+DOC/DOCX conversion and EPUB/MOBI tools need LibreOffice or Calibre installed
+and on your PATH. PaperNinja will show a prompt naming the missing dependency
+if one isn't found.
+
+See the [Required Dependencies](https://github.com/shyhunter/PaperNinja/wiki/Required-Dependencies)
+wiki page for full per-platform detail.
+
+### Still stuck?
+
+Check the [Troubleshooting wiki page](https://github.com/shyhunter/PaperNinja/wiki/Troubleshooting)
+for more error messages, or [open an issue](https://github.com/shyhunter/PaperNinja/issues/new/choose)
+and include the exact error message.
+
+</details>
+
+---
+
+## Development
+
+```bash
+# Install dependencies
+npm install
+
+# Start development server (Tauri + Vite)
+npm run tauri dev
+
+# Run tests
+npm run test
+
+# Type check
+npx tsc --noEmit
+
+# Lint
+npm run lint
+```
+
+### Prerequisites
+
+- [Node.js](https://nodejs.org/) (v18+)
+- [Rust](https://rustup.rs/) (stable)
+- [Tauri CLI](https://v2.tauri.app/start/prerequisites/)
+
+---
+
+## Tech Stack
+
+| Layer | Technology | Licence |
+|-------|------------|---------|
+| App Shell | [Tauri v2](https://v2.tauri.app/) | Apache-2.0 OR MIT |
+| Frontend | [React 19](https://react.dev/) | MIT |
+| Frontend | [TypeScript](https://www.typescriptlang.org/) (build only) | Apache-2.0 |
+| Styling | [Tailwind CSS v4](https://tailwindcss.com/) (build only) | MIT |
+| PDF Processing | [pdf-lib](https://pdf-lib.js.org/) | MIT |
+| PDF Processing | [pdfjs-dist](https://mozilla.github.io/pdf.js/) | Apache-2.0 |
+| Document Conversion | in-app engine + [mammoth](https://github.com/mwilliamson/mammoth.js) (DOCX) | BSD-2-Clause |
+| Document Conversion | [fflate](https://github.com/101arrowz/fflate) | MIT |
+| Image Processing | [image](https://github.com/image-rs/image) (Rust crate) | MIT OR Apache-2.0 |
+| PDF structure & repair | [qpdf](https://github.com/qpdf/qpdf) (compiled in) | Apache-2.0 |
+
+Every bundled component is permissively licensed: there is no copyleft in the installer, and nothing here restricts commercial use. LibreOffice and Calibre are not distributed with PaperNinja — they are called only if the user has installed them themselves.
+
+---
+
+## Acknowledgements
+
+PaperNinja is built on top of the open-source tools listed in Tech Stack above,
+plus optional support for [LibreOffice](https://www.libreoffice.org/) and
+[Calibre](https://calibre-ebook.com/) for document/ebook conversion. Thanks
+to all their maintainers.
+
+---
+
+## License
+
+[MIT](LICENSE): see the LICENSE file for details.
+
+---
+
+## Contributing
+
+Contributions are welcome! Please see the [pull request template](.github/pull_request_template.md) for the submission checklist. Open an issue first for major changes. By participating, you're expected to follow the [Code of Conduct](CODE_OF_CONDUCT.md).
+
+---
+
+If PaperNinja saves you time, consider [buying me a coffee](https://buymeacoffee.com/shyhunter): it helps keep development going.

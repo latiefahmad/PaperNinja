@@ -1,0 +1,528 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* Native form controls -- the <select> popup above all -- are drawn by the
+     platform (GTK on Linux), not from the DOM, so CSS on <option> cannot reach
+     them. `color-scheme` is the property that does: it tells the engine which
+     chrome to draw. Without it, GTK drew a light popup while the app was dark,
+     and the option text stayed white: white on white, unreadable.
+     Declared for BOTH themes on purpose. A lone `color-scheme: dark` would fix
+     dark mode by breaking light mode. */
+  color-scheme: light;
+  --radius: 0.55rem;
+  /* shadcn/ui CSS vars will be populated by `npx shadcn init` */
+
+  /* The light page is off-white, not white, and the surfaces that sat just
+     under white moved down with it. A pure-white page was reported as too
+     bright to read against; leaving --muted/--secondary/--accent at 0.97 while
+     the page moved to 0.97 would have made them the same colour and erased
+     every hover state and filled row. --card stays at 1, so cards now lift off
+     the page instead of dissolving into it.
+     --muted-foreground is 0.48 rather than 0.556: on this background 0.556
+     measures 4.34:1, under the 4.5:1 WCAG AA asks for body text. 0.48 is
+     5.99:1. See UI-07. */
+  --background: oklch(0.994 0.006 85);
+  --foreground: oklch(0.184 0.005 68);
+  --card: oklch(0.994 0.006 85);
+  --card-foreground: oklch(0.184 0.005 68);
+  --popover: oklch(0.994 0.006 85);
+  --popover-foreground: oklch(0.184 0.005 68);
+  --primary: oklch(0.84 0.165 90);
+  --primary-foreground: oklch(0.184 0.005 68);
+  --secondary: oklch(0.93 0.022 88);
+  --secondary-foreground: oklch(0.205 0.012 60);
+  --muted: oklch(0.93 0.022 88);
+  --muted-foreground: oklch(0.48 0.015 70);
+  --accent: oklch(0.92 0.045 90);
+  --accent-foreground: oklch(0.205 0.012 60);
+  --destructive: oklch(0.577 0.245 27.325);
+  /* 0.88, not the 0.922 it was: the muted surfaces moved to 0.93, and a border
+     at 0.922 sitting on one of them is a difference of 0.008 -- no outline at
+     all. This keeps roughly the separation the border had from the old white
+     page. See UI-07e. */
+  --border: oklch(0.42 0.018 70);
+  --input: oklch(0.42 0.018 70);
+  --ring: oklch(0.55 0.14 92);
+  /* Colour carries meaning, not decoration: sky marks image tools, lilac marks
+     document tools, lime marks a good result, coral marks destructive work. */
+  --sky: oklch(0.841 0.085 229);
+  --lilac: oklch(0.818 0.103 296);
+  --lime: oklch(0.889 0.174 128);
+  --coral: oklch(0.757 0.147 32);
+  /* Green for a job that finished, at a lightness text can actually be set in.
+     --lime is the fill behind a completed step and is far too bright to write
+     on: the success tick shipped as #22c55e, which measures 2.24:1 on this
+     page -- under the 3:1 even a non-text mark is asked for. These two are
+     4.96:1 and 6.58:1, so the saved-file link clears AA at 12px and deepens on
+     hover. See UI-08. */
+  --success: oklch(0.52 0.16 150);
+  --success-strong: oklch(0.45 0.16 150);
+  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+}
+
+body {
+  font-family: 'Archivo', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  font-size: clamp(14px, 1.2vw + 0.4vh, 20px);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+.dark {
+  /* See the note on :root. This is the line that actually fixes the dropdown. */
+  color-scheme: dark;
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(1 0 0);
+  --card: oklch(0.195 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.195 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.84 0.165 90);
+  --primary-foreground: oklch(0.184 0.005 68);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.78 0 0);
+  --accent: oklch(0.30 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0);
+  --input: oklch(0.88 0 0);
+  --ring: oklch(0.75 0.15 92);
+  --sky: oklch(0.78 0.11 229);
+  --lilac: oklch(0.76 0.12 296);
+  --lime: oklch(0.82 0.19 128);
+  --coral: oklch(0.66 0.16 30);
+  /* The same two roles, inverted: on a dark card the readable green is the
+     light one, and "stronger" means lighter rather than darker. 10.43:1 and
+     13.51:1. */
+  --success: oklch(0.80 0.17 150);
+  --success-strong: oklch(0.88 0.17 150);
+  --chart-1: oklch(0.488 0.243 264.376);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+  /* Native <select> popups take their text colour from the control but their
+     background from the platform, so in dark theme every dropdown in the app
+     rendered light text on a white list -- unreadable. Reported from a real
+     Linux build; invisible on macOS, which draws select popups natively and
+     ignores CSS entirely.
+     Global rather than a className on each of the 29 <option> elements: this
+     covers every dropdown shipping today and every one added later, and there
+     is nothing in the type system to remind anyone otherwise. Popover tokens
+     rather than background/foreground because a dropdown is a floating surface,
+     and both are defined under :root and .dark. */
+  option {
+    @apply bg-popover text-popover-foreground;
+  }
+}
+
+/* ── Theme transition for cards, panels, and inputs ──────────────────── */
+.dark *,
+:root * {
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* ── Animation keyframes ─────────────────────────────────────────────── */
+@keyframes fade-slide-in {
+  0% { opacity: 0; transform: translateY(8px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes bounce-in {
+  0% { transform: scale(0.95); opacity: 0.7; }
+  50% { transform: scale(1.03); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes checkmark-draw {
+  0% { stroke-dashoffset: 48; }
+  100% { stroke-dashoffset: 0; }
+}
+
+@keyframes spin-slow {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes pulse-subtle {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+/* The mark flips toward the viewer, snapping through sixteen positions a second
+   the way hand-cranked film moves. `transform` only, so it runs on the
+   compositor: a loading animation plays exactly when the main thread is
+   busiest, and anything animating layout would stall precisely when it is on
+   screen -- a frozen spinner reads as a crashed app.
+
+   This was written once and then deleted by an unrelated edit in 241e471,
+   which is why every NinjaLoader on screen has been a static picture since.
+   `steps()` and a keyframe are the whole mechanism: no timer, no rAF loop,
+   nothing to leak on unmount. */
+.ninja-loader-stage { perspective: 520px; }
+
+@keyframes ninja-flip {
+  to { transform: rotateY(360deg); }
+}
+
+.ninja-loader-mark {
+  animation: ninja-flip 1.6s steps(16, end) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ninja-loader-mark { animation: none; transform: none; }
+}
+
+.animate-fade-slide-in {
+  animation: fade-slide-in 0.3s ease-out both;
+}
+
+.animate-bounce-in {
+  animation: bounce-in 0.3s ease-out both;
+}
+
+/* ── Respect reduced motion preference ───────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+/* ---------------------------------------------------------------------------
+   PaperNinja surface style.
+
+   The look is carried by tokens rather than by edits at 894 call sites: radius,
+   border colour and shadow are already single sources of truth, so changing
+   them here changes the whole app. What is added below is only what has no
+   token: the display face, the hard shadow, and the hand-drawn corner.
+   --------------------------------------------------------------------------- */
+
+@theme inline {
+  --font-sans: 'Archivo', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+  --font-display: 'Bricolage Grotesque', 'Archivo', system-ui, sans-serif;
+
+  /* Offset, not blur. Only sm/md are replaced — lg and xl still belong to
+     popovers and dialogs, which need to read as floating above the page. */
+  --shadow-sm: 2px 2px 0 var(--border);
+  --shadow-md: 4px 4px 0 var(--border);
+}
+
+h1, h2, h3, .font-display {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-variation-settings: 'opsz' 40;
+  letter-spacing: -0.015em;
+}
+
+/* Digits that sit in columns — file sizes, page counts, percentages. */
+.tabular {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Mismatched horizontal and vertical radii read as drawn by hand rather than
+   computed. Four variants dealt out by position so a grid does not look like one
+   shape stamped twenty times, plus a fraction of a degree of tilt each. The tilt
+   lives in a custom property so hover can add to it instead of replacing it. */
+[data-slot="card"],
+[data-slot="popover-content"] { border-radius: 22px 8px 26px 10px / 10px 26px 8px 22px; }
+
+[data-testid="tool-card"] { --tilt: 0deg; transform: rotate(var(--tilt)); }
+*:nth-child(4n+1) > [data-testid="tool-card"] { border-radius: 22px 8px 26px 10px / 10px 26px 8px 22px; --tilt: -0.45deg; }
+*:nth-child(4n+2) > [data-testid="tool-card"] { border-radius: 9px 25px 8px 22px / 22px 8px 26px 9px;  --tilt:  0.35deg; }
+*:nth-child(4n+3) > [data-testid="tool-card"] { border-radius: 26px 10px 20px 8px / 8px 22px 10px 26px; --tilt:  0.5deg;  }
+*:nth-child(4n+4) > [data-testid="tool-card"] { border-radius: 8px 22px 11px 26px / 26px 10px 22px 8px; --tilt: -0.3deg;  }
+
+/* Controls get the same treatment, gentler — they are small, so the same radii
+   would read as lozenges rather than as drawn edges. */
+[data-slot="button"]:not([data-variant="link"]) { border-radius: 12px 5px 14px 6px / 6px 14px 5px 12px; }
+input:not([type="range"]), select, textarea, [data-slot="input"] {
+  border-radius: 6px 13px 5px 12px / 12px 5px 14px 6px;
+}
+[data-slot="badge"] { border-radius: 10px 4px 11px 5px / 5px 11px 4px 10px; }
+
+/* Hover lifts toward the viewer instead of growing — scaling a card with a hard
+   shadow makes the shadow scale too, which reads as wobbling. */
+[data-testid="tool-card"]:not([data-disabled="true"]):hover {
+  transform: rotate(var(--tilt)) translate(-3px, -3px);
+  box-shadow: 9px 9px 0 var(--border);
+}
+
+/* Icons are ink, not hue. Fifteen of nineteen tools are PDF, so colour-coding by
+   category said almost nothing while pulling against the black-and-white direction. */
+[data-testid="tool-card"] svg:first-of-type { color: var(--foreground); }
+[data-testid="tool-card"][data-category="image"] svg:first-of-type { color: var(--sky); }
+[data-testid="tool-card"][data-category="document"] svg:first-of-type { color: var(--lilac); }
+[data-testid="tool-card"][data-disabled="true"] svg:first-of-type { color: var(--muted-foreground); }
+
+/* Tool cards read left-aligned: icon, then title, then description, all on the
+   same left edge, so the eye runs down one line instead of zig-zagging. */
+[data-testid="tool-card"] { align-items: flex-start; text-align: left; }
+[data-testid="tool-card"] > div { text-align: left; width: 100%; }
+
+/* Any popup is a tool card that happens to float. */
+[data-modal-panel] {
+  border-width: 3px;
+  border-color: var(--border);
+  box-shadow: 7px 7px 0 var(--border);
+  border-radius: 22px 8px 26px 10px / 10px 26px 8px 22px;
+  background: var(--card);
+}
+
+/* A switch that is on means "this is happening" — green says that; the brand
+   yellow is for the primary action, and using it here would blur the two. */
+[role="switch"][aria-checked="true"] { background: var(--lime); border-color: var(--border); }
+
+/* Footnote type: small, so it needs the extra tracking to stay readable. */
+[data-testid="privacy-footer"] { letter-spacing: 0.14em; text-transform: uppercase; }
+
+/* ---------------------------------------------------------------------------
+   No straight lines.
+
+   Every edge in the app is drawn, not computed: the same mismatched horizontal
+   and vertical radii the cards use, scaled to the size of the thing. Anything
+   with a frame gets one — search fields, the icon buttons in the chrome, the
+   language picker, the popovers.
+   --------------------------------------------------------------------------- */
+
+button, [role="button"], input, select, textarea,
+[data-slot="button"], [data-slot="input"], [data-slot="badge"],
+[data-slot="popover-content"], [data-slot="select-trigger"] {
+  border-radius: 12px 5px 14px 6px / 6px 14px 5px 12px;
+}
+
+/* Search is a big field, so it takes the card's radius rather than a control's. */
+input[type="search"], input[data-testid="tool-search"], .search-field {
+  border-radius: 18px 7px 20px 8px / 8px 20px 7px 18px;
+}
+
+/* Buttons are built like small cards — same border weight, same offset shadow —
+   so a button and a card read as the same drawn system. */
+[data-slot="button"]:not([data-variant="ghost"]):not([data-variant="link"]),
+button[data-framed] {
+  border-width: 3px;
+  border-color: var(--border);
+  box-shadow: 4px 4px 0 var(--border);
+}
+[data-slot="button"]:not([data-variant="ghost"]):not([data-variant="link"]):active:not(:disabled),
+button[data-framed]:active:not(:disabled) {
+  transform: translate(4px, 4px);
+  box-shadow: none;
+}
+
+/* Section headings in the dashboard sit on a drawn rule rather than floating. */
+[data-section-heading] {
+  border-bottom: 3px solid var(--border);
+  border-radius: 0 0 14px 4px / 0 0 5px 12px;
+  padding-bottom: 6px;
+  letter-spacing: 0.12em;
+}
+
+/* Chosen things are yellow: the favourites row, and the header panel that holds
+   the search. Yellow means "this one", the same way it marks the current step. */
+[data-favourite="true"] { background: var(--primary); }
+[data-favourite="true"] svg:first-of-type { color: var(--foreground); }
+[data-dashboard-header] { background: var(--primary); }
+.dark [data-favourite="true"] {
+  background: var(--foreground);
+  color: var(--background);
+}
+.dark [data-favourite="true"] svg:first-of-type,
+.dark [data-favourite="true"] h3,
+.dark [data-favourite="true"] p { color: var(--background); }
+
+.dark [data-dashboard-header] {
+  background: var(--card);
+  color: var(--foreground);
+}
+
+/* The rule between "Open file" and "Drop file here" is drawn, not ruled. */
+[data-drawn-divider] {
+  border: none;
+  width: 3px;
+  background: var(--border);
+  border-radius: 40% 60% 55% 45% / 2% 3% 2% 3%;
+}
+
+/* Dark stays black and white: the yellow that marks the chosen compression zone
+   in light mode becomes plain white on a dark ground, where yellow-on-black is
+   louder than the choice deserves. */
+.dark [data-testid="quality-slider-track"] .bg-\[var\(--primary\)\] { background: var(--foreground); }
+
+/* ---------------------------------------------------------------------------
+   No straight lines, part two.
+
+   The rule above reaches form controls and the shadcn primitives, but roughly
+   224 `rounded-*` utilities sit on plain divs — page thumbnails, the zoom
+   control, signature tiles, merge rows, the before/after panes. Redefining the
+   utilities themselves catches every one of them without editing a single
+   component, and scales the drawn radius to the size the class implies.
+   `rounded-full` is deliberately left alone: pills and avatars are meant to be
+   round, and a wobbled circle just looks like a mistake.
+   --------------------------------------------------------------------------- */
+
+.rounded, .rounded-sm, .rounded-md {
+  border-radius: 9px 4px 10px 5px / 5px 10px 4px 9px;
+}
+.rounded-lg {
+  border-radius: 13px 5px 15px 6px / 6px 15px 5px 13px;
+}
+.rounded-xl, .rounded-2xl, .rounded-3xl {
+  border-radius: 20px 7px 22px 9px / 9px 22px 7px 20px;
+}
+
+/* A native <select> draws its own chrome, so the radius alone leaves it looking
+   machined. Dropping the platform appearance lets the drawn edge actually show. */
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: none;
+  padding-inline-end: 1.75rem;
+}
+
+/* Category colour moves to the card fill in light, where there is room for it,
+   and stays on the icon in dark, where a filled blue panel would break the
+   black-and-white aesthetic. Icons on a filled card are ink. */
+[data-testid="tool-card"][data-category="image"] { background: var(--sky); }
+[data-testid="tool-card"][data-category="document"] { background: var(--lilac); }
+[data-testid="tool-card"][data-category="image"] svg:first-of-type,
+[data-testid="tool-card"][data-category="document"] svg:first-of-type { color: var(--foreground); }
+
+.dark [data-testid="tool-card"][data-category="image"],
+.dark [data-testid="tool-card"][data-category="document"] { background: var(--card); }
+.dark [data-testid="tool-card"][data-category="image"] svg:first-of-type { color: var(--sky); }
+.dark [data-testid="tool-card"][data-category="document"] svg:first-of-type { color: var(--lilac); }
+
+/* Every tool card is the same height, whatever the length of its description —
+   one-line descriptions were leaving short cards in the grid. */
+[data-testid="tool-card"] { height: 100%; }
+
+/* ── Toasts ──────────────────────────────────────────────────────────────────
+   A toast is a card like every other card here, so it gets the same drawn edge
+   and hard shadow rather than the rounded rectangle the library ships. The
+   description colour is set from our own token too: sonner's stylesheet picks
+   one from its own idea of the theme, which is how a near-white line came to be
+   printed on a light popover. */
+[data-sonner-toast] {
+  border: 3px solid var(--border) !important;
+  border-radius: 18px 7px 20px 8px / 8px 20px 7px 18px !important;
+  box-shadow: 5px 5px 0 var(--border) !important;
+}
+
+[data-sonner-toast] [data-description] {
+  color: var(--muted-foreground) !important;
+}
+
+/* The close button is off by default and only appears on hover; a toast that
+   covers something should be dismissible the moment it is seen. */
+[data-sonner-toast] [data-close-button] {
+  opacity: 1 !important;
+  border: 2px solid var(--border) !important;
+  background: var(--popover) !important;
+  color: var(--popover-foreground) !important;
+  border-radius: 8px 3px 9px 4px / 4px 9px 3px 8px !important;
+}
+
+/* ── A chosen option has to look chosen ──────────────────────────────────────
+   Thirty-seven controls mark their selected state as `border-primary` plus a
+   tint of the same colour. The tint is 5% or 10% of the brand yellow, which on
+   a page at oklch(0.994 ...) composites to within a couple of levels of the
+   paper: on the Configure steps the chosen format and the chosen resolution
+   were, in practice, indistinguishable from the ones beside them.
+
+   Raised here rather than at thirty-seven call sites, because it is one
+   decision -- how visible "chosen" is -- and it should stay one. The pairing
+   with `border-primary` is what keeps this off hover states and drag overlays,
+   which use the same tints to mean something much weaker.
+
+   Dark mode is left alone: the same alpha over oklch(0.145 ...) already reads. */
+:root:not(.dark) .border-primary.bg-primary\/5 {
+  background-color: color-mix(in oklab, var(--primary) 24%, transparent);
+}
+:root:not(.dark) .border-primary.bg-primary\/10 {
+  background-color: color-mix(in oklab, var(--primary) 34%, transparent);
+}
+:root:not(.dark) .border-primary.bg-primary\/20 {
+  background-color: color-mix(in oklab, var(--primary) 46%, transparent);
+}

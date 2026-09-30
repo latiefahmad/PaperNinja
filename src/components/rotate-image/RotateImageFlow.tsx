@@ -1,0 +1,313 @@
+import { useState, useCallback } from 'react';
+import { stripImageExtension, getFileName } from '@/lib/fileValidation';
+import { readImageBytes } from '@/lib/imageInput';
+import { RotateCcw, RotateCw } from 'lucide-react';
+import { SaveStep } from '@/components/SaveStep';
+import { StepErrorBoundary } from '@/components/ErrorBoundary';
+import { Button } from '@/components/ui/button';
+import { rotateImage } from '@/lib/imageRotate';
+import { cn } from '@/lib/utils';
+import { turnImage, type ImageRotation } from '@/lib/imageRotate';
+import type { ImageOutputFormat } from '@/types/file';
+import { t } from '@/i18n';
+import { NinjaSpinner } from '@/components/brand/NinjaSpinner';
+import { PRIMARY_ACTION } from '@/components/ui/primaryAction';
+import { FilePickStep } from '@/components/FilePickStep';
+
+
+const FORMAT_LABELS: Record<ImageOutputFormat, string> = {
+  jpeg: 'JPG',
+  png: 'PNG',
+  webp: 'WebP',
+};
+
+const FORMATS: ImageOutputFormat[] = ['jpeg', 'png', 'webp'];
+
+function detectFormatFromPath(filePath: string): ImageOutputFormat {
+  const ext = filePath.split('.').pop()?.toLowerCase() ?? '';
+  if (ext === 'png') return 'png';
+  if (ext === 'webp') return 'webp';
+  return 'jpeg';
+}
+
+function buildSaveName(sourceFileName: string, outputFormat: ImageOutputFormat): string {
+  const base = stripImageExtension(sourceFileName);
+  const ext = outputFormat === 'jpeg' ? 'jpg' : outputFormat;
+  return `${base}-rotated.${ext}`;
+}
+
+function buildSaveFilters(outputFormat: ImageOutputFormat): Array<{ name: string; extensions: string[] }> {
+  switch (outputFormat) {
+    case 'jpeg': return [{ name: t('filter.jpegImage'), extensions: ['jpg', 'jpeg'] }];
+    case 'png':  return [{ name: t('filter.pngImage'),  extensions: ['png'] }];
+    case 'webp': return [{ name: t('filter.webpImage'), extensions: ['webp'] }];
+  }
+}
+
+interface RotateImageFlowProps {
+  onStepChange?: (step: number) => void;
+}
+
+export function RotateImageFlow({ onStepChange }: RotateImageFlowProps) {
+  const [step, setStep] = useState(0);
+
+  const goToStep = useCallback((s: number) => {
+    setStep(s);
+    onStepChange?.(s);
+  }, [onStepChange]);
+  const [filePath, setFilePath] = useState<string | null>(null);
+  const [fileName, setFileName] = useState('');
+  // The file this flow opened. Save writes back to it; Save as... writes a copy.
+  const [sourcePath, setSourcePath] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [rotation, setRotation] = useState<ImageRotation>(0);
+  const [outputFormat, setOutputFormat] = useState<ImageOutputFormat>('jpeg');
+  const [quality, setQuality] = useState(80);
+  const [isLoadingFile, setIsLoadingFile] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [processError, setProcessError] = useState<string | null>(null);
+  const [resultBytes, setResultBytes] = useState<Uint8Array | null>(null);
+  const [savedFilePath, setSavedFilePath] = useState<string | null>(null);
+
+
+
+  const loadFile = useCallback(async (path: string) => {
+    setIsLoadingFile(true);
+    setLoadError(null);
+    try {
+      // A HEIC comes back as PNG — the webview cannot decode HEIC itself.
+      const { bytes } = await readImageBytes(path);
+      // Create preview URL from bytes
+      const blob = new Blob([bytes]);
+      const bitmap = await createImageBitmap(blob);
+      const canvas = document.createElement('canvas');
+      canvas.width = bitmap.width;
+      canvas.height = bitmap.height;
+      const ctx = canvas.getContext('2d')!;
+      ctx.drawImage(bitmap, 0, 0);
+      const url = canvas.toDataURL();
+      bitmap.close();
+
+      const name = getFileName(path);
+      setFilePath(path);
+      setFileName(name);
+      setSourcePath(path);
+      setPreviewUrl(url);
+      setOutputFormat(detectFormatFromPath(path));
+      goToStep(1);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : t('convertImageFlow.failedToLoadImage');
+      setLoadError(message);
+    } finally {
+      setIsLoadingFile(false);
+    }
+  }, [goToStep]);
+
+
+
+  const handleRotateLeft = useCallback(() => setRotation((prev) => turnImage(prev, 'left')), []);
+  const handleRotateRight = useCallback(() => setRotation((prev) => turnImage(prev, 'right')), []);
+
+  const handleApply = useCallback(async () => {
+    if (!filePath) return;
+    // Nothing to do at 0, and re-encoding an image to leave it alone would only
+    // cost it quality. The button is disabled there, so this is the second lock.
+    if (rotation === 0) return;
+    setIsProcessing(true);
+    setProcessError(null);
+    try {
+      const bytes = await rotateImage(filePath, rotation, outputFormat, quality);
+      setResultBytes(new Uint8Array(bytes));
+      goToStep(2);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : t('rotateImageFlow.rotationFailed');
+      setProcessError(message);
+    } finally {
+      setIsProcessing(false);
+    }
+  }, [filePath, rotation, outputFormat, quality, goToStep]);
+
+  const showQualitySlider = outputFormat !== 'png';
+
+  return (
+    <>
+      <StepErrorBoundary stepName="Rotate Image">
+        {/* Step 0: Pick file */}
+        {step === 0 && (
+          <FilePickStep
+            acceptedFormats={['image']}
+            tagline={t('rotateImage.selectAnImageToRotate')}
+            onFileReady={loadFile}
+            isLoading={isLoadingFile}
+            error={loadError}
+          />
+        )}
+
+        {/* Step 1: Rotate configuration */}
+        {step === 1 && previewUrl && (
+          <>
+          <div className="flex min-h-0 flex-1 flex-col items-center overflow-y-auto p-6">
+            <div className="w-full max-w-md space-y-4 my-auto">
+              {/* File name */}
+              <div className="text-center">
+                <p className="text-sm font-medium text-foreground truncate">{fileName}</p>
+              </div>
+
+              {/* Image preview with CSS rotation */}
+              <div className="flex items-center justify-center rounded-lg border border-border bg-card p-4 overflow-hidden">
+                <img
+                  src={previewUrl}
+                  alt={t('common.preview')}
+                  className="max-h-48 max-w-full object-contain transition-transform duration-300"
+                  style={{ transform: `rotate(${rotation}deg)` }}
+                />
+              </div>
+
+              {/* Rotation buttons */}
+              <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+                <p className="text-xs text-muted-foreground">{t('rotateImage.rotation')}</p>
+                <div className="flex items-center justify-center gap-3">
+                  <Button variant="outline" size="sm" onClick={handleRotateLeft} disabled={isProcessing}>
+                    <RotateCcw className="w-4 h-4 me-1.5" />
+                    {t('rotateImage.left90')}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setRotation(180)}
+                    disabled={isProcessing}
+                  >
+                    180
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={handleRotateRight} disabled={isProcessing}>
+                    {t('rotateImage.right90')}
+                    <RotateCw className="w-4 h-4 ms-1.5" />
+                  </Button>
+                </div>
+                <p className="text-center text-xs text-muted-foreground">
+                  {t('rotateImageFlow.currentDegreesClockwise', { degrees: rotation })}
+                </p>
+              </div>
+
+              {/* Output format */}
+              <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+                <p className="text-xs text-muted-foreground">{t('imageConfigure.outputFormat')}</p>
+                <div className="grid grid-cols-3 gap-1">
+                  {FORMATS.map((fmt) => (
+                    <button
+                      key={fmt}
+                      type="button"
+                      onClick={() => setOutputFormat(fmt)}
+                      disabled={isProcessing}
+                      className={cn(
+                        'rounded-md border px-3 py-1.5 text-xs font-medium transition-colors',
+                        'disabled:cursor-not-allowed disabled:opacity-50',
+                        outputFormat === fmt
+                          ? 'border-primary bg-primary/5 text-foreground'
+                          : 'border-border text-muted-foreground hover:border-primary/50',
+                      )}
+                    >
+                      {FORMAT_LABELS[fmt]}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Quality slider (JPG/WebP only) */}
+                {showQualitySlider && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs text-muted-foreground">{t('common.quality')}</label>
+                      <span className="text-xs font-medium text-foreground tabular-nums">{quality}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="1"
+                      max="100"
+                      step="1"
+                      value={quality}
+                      onChange={(e) => setQuality(Number(e.target.value))}
+                      disabled={isProcessing}
+                      className="w-full accent-primary disabled:opacity-50"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Error */}
+              {processError && (
+                <p className="rounded-md border border-destructive/50 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                  {processError}
+                </p>
+              )}
+            </div>
+          </div>
+          {/* Actions -- a sibling of the scrolling column, never a child of it.
+              As its last child the bar left the window along with the content
+              once the preview made the column taller than the window: Back sat
+              below the fold at 900x660 with nothing on screen to reach it.
+              Asserted now by FLOW-02 in src/browser-tests/flow-walkthrough.spec.ts. */}
+          <div className="flex-none border-t border-border bg-background p-4">
+            <div className="mx-auto w-full max-w-md">
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    goToStep(0);
+                    setPreviewUrl(null);
+                    setFilePath(null);
+                    setFileName('');
+                  }}
+                  disabled={isProcessing}
+                  className="flex-none"
+                >
+                  {t('common.back')}
+                </Button>
+                <Button
+                  size="sm"
+                  data-testid="apply-btn"
+                  onClick={handleApply}
+                  // At 0 the image is as it arrived, so there is nothing to
+                  // apply. Rotate PDF is the same: a page with no turn on it is
+                  // left alone rather than rewritten.
+                  disabled={isProcessing || rotation === 0}
+                  className={PRIMARY_ACTION}
+                >
+                  {isProcessing ? (
+                    <>
+                      <NinjaSpinner className="size-4" />
+                      {t('rotateImage.rotating')}
+                    </>
+                  ) : (
+                    t('common.applyAndSave')
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+          </>
+        )}
+
+        {/* Step 2: Save */}
+        {step === 2 && resultBytes && (
+          <SaveStep
+            sourcePath={sourcePath}
+            processedBytes={resultBytes}
+            sourceFileName={fileName}
+            defaultSaveName={buildSaveName(fileName, outputFormat)}
+            saveFilters={buildSaveFilters(outputFormat)}
+            savedFilePath={savedFilePath}
+            onDismissSaveConfirmation={() => setSavedFilePath(null)}
+            onSaveComplete={(path) => setSavedFilePath(path)}
+            onCancel={() => goToStep(1)}
+            onBack={() => {
+              setSavedFilePath(null);
+              goToStep(1);
+            }}
+          />
+        )}
+      </StepErrorBoundary>
+    </>
+  );
+}

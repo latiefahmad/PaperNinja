@@ -1,0 +1,64 @@
+# Contributing to PaperNinja
+
+Thanks for taking the time. This is a small project, so the process is light.
+
+## Reporting bugs and suggesting features
+
+Bugs go to the [Bug Report](.github/ISSUE_TEMPLATE/bug_report.yml) template. The
+two things that matter most are **how to reproduce it** and **the file it
+happened with**, if you can share one. PaperNinja deals with documents, and many
+bugs only appear on a particular file.
+
+Feature ideas go to
+[Discussions](https://github.com/shyhunter/PaperNinja/discussions/new?category=ideas)
+instead of the issue tracker. An issue list reads as a queue of promises, and
+an idea deserves somewhere it can be argued about first. The ones worth
+building get turned into issues from there.
+
+If the app crashed, the crash dialog can pre-fill a report for you.
+
+For anything security-related, do not open an issue: see [SECURITY.md](SECURITY.md).
+
+## Getting set up
+
+Requires Node 22 (22.22.2 or newer) and a stable Rust toolchain.
+
+```bash
+npm install
+npm run tauri dev
+```
+
+## Before opening a pull request
+
+```bash
+npm run test          # Vitest: the whole suite
+npx tsc --noEmit      # type check
+npm run lint
+cd src-tauri && cargo clippy -- -D warnings && cargo test --lib
+```
+
+CI runs the same checks. It skips the Rust jobs when nothing under `src-tauri/`
+changed, and skips everything for documentation-only changes, so a small PR is
+cheap.
+
+## House rules
+
+These are worth knowing, because they are enforced in review:
+
+- **Tests come first.** A bug fix ships with a regression test that fails before
+  the fix and passes after it. Write it, watch it go red, then fix.
+- **Use real fixtures.** New processing pipelines get a real binary file in
+  `test-fixtures/`, not a synthetic stub with the right magic bytes. Three live
+  bugs got through because a stub looked close enough.
+- **Say what your test pins down.** Name the behaviour it protects in the PR
+  description, so the test plan can be kept in step with it.
+- **Never widen the Tauri capabilities** in `src-tauri/capabilities/` without
+  saying why in the PR. Each permission is potential file or shell access from
+  JavaScript.
+- **No secrets in the repo**, including base64-encoded ones. `gitleaks` runs on
+  every PR with extra rules for exactly that trick.
+
+## Commit messages
+
+Conventional commits: `fix(editor): …`, `feat(convert): …`, `chore(ci): …`.
+Explain *why* in the body, not just what; the diff already says what.

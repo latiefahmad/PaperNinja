@@ -1,0 +1,126 @@
+name: Security
+
+# Implements project rules P015 (npm audit) and P016 (gitleaks).
+# Independent from ci.yml so a security failure surfaces clearly and never blocks unrelated work.
+
+on:
+  # Same duplication fix as ci.yml — see the note there. Secret scanning still
+  # sees every PR, and every commit that lands on main.
+  push:
+    branches: [main]
+  pull_request:
+    branches: ['**']
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  gitleaks:
+    name: Secret scan (gitleaks)
+    runs-on: ubuntu-22.04
+    # gitleaks-action reads the PR's commit list via the API on pull_request
+    # events. That endpoint needed no scope while this repo was public, so the
+    # workflow-level `contents: read` was enough; once the repo went private it
+    # started returning 403 "Resource not accessible by integration" and the job
+    # crashed — silently disabling the P016 gate on every PR. Granted here at job
+    # level rather than workflow level so npm-audit keeps the narrower scope.
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Checkout (full history for diff scan)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+
+      - name: Run gitleaks
+        uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Custom ruleset — the default one cannot see base64-wrapped secrets.
+          # See .gitleaks.toml for why that matters here.
+          GITLEAKS_CONFIG: .gitleaks.toml
+          # GITLEAKS_LICENSE: only needed for org-level dashboard (optional)
+
+  npm-audit:
+    name: Dependency audit (npm + cargo)
+    runs-on: ubuntu-22.04
+    # The workflow default is contents:read. rustsec/audit-check publishes its
+    # findings as a check run, which needs checks:write — without it the audit
+    # itself passes and then the action dies on "Resource not accessible by
+    # integration", turning a clean result into a failed required check.
+    # Scoped to this job rather than raised at the workflow level.
+    permissions:
+      contents: read
+      checks: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies (lockfile, no scripts)
+        run: npm ci --ignore-scripts
+
+      # npm audit exits 1 for two unrelated reasons: advisories were found, and
+      # the registry could not be reached. Collapsing them means an npmjs.org
+      # outage blocks every merge and reads like a security finding -- which is
+      # what happened on 2026-09-04, red for 10m25s against a normal 31s.
+      # Same shape as the gitleaks 403 recorded above: infrastructure failure
+      # misread as a verdict. Retry the transient case, and keep the two apart
+      # in the log. Still fails closed on a sustained outage: "could not check"
+      # is not "clean".
+      - name: npm audit (prod, fail on high+)
+        run: |
+          for attempt in 1 2 3; do
+            npm audit --omit=dev --json > audit.json 2>/dev/null || true
+            if jq -e '.metadata.vulnerabilities' audit.json >/dev/null 2>&1; then
+              high=$(jq '.metadata.vulnerabilities.high' audit.json)
+              crit=$(jq '.metadata.vulnerabilities.critical' audit.json)
+              echo "high=$high critical=$crit"
+              if [ "$high" -gt 0 ] || [ "$crit" -gt 0 ]; then
+                echo "::error::High or critical advisories in production dependencies."
+                npm audit --omit=dev --audit-level=high
+                exit 1
+              fi
+              echo "No high or critical advisories in production dependencies."
+              exit 0
+            fi
+            echo "Attempt $attempt of 3: audit endpoint unavailable."
+            if [ "$attempt" -lt 3 ]; then sleep 30; fi
+          done
+          echo "::error::npm audit endpoint unreachable after 3 attempts. This is a registry outage, not a finding. Dependabot alerts remain the standing control; re-run this job once registry.npmjs.org answers."
+          exit 1
+
+      # npm audit reads GitHub's advisory database; cargo audit reads RustSec.
+      # They are different databases and RustSec is routinely ahead for Rust
+      # crates. On 2026-09-10 that gap hid two 7.5-severity quick-xml advisories
+      # for as long as nothing looked: npm audit said 0, Dependabot said 0 open
+      # alerts, and cargo audit said two. Nothing on the project was reading
+      # Cargo.lock at all.
+      #
+      # Advisory-only failures: unmaintained/yanked transitive crates arrive
+      # through Tauri and cannot be fixed here, so warnings do not block a merge.
+      # Actual vulnerabilities do.
+      - name: cargo audit (fail on vulnerabilities, not on unmaintained warnings)
+        # Pinned past the v2.0.0 tag on purpose. GitHub removes Node 20 from
+        # hosted runners on 2026-09-16 and the v2.0.0 release still declares it,
+        # so the tagged version stops running. Upstream fixed it in 858dc40f
+        # (Mar 2026) and never cut a release. The delta from the tag is three
+        # commits: a changelog, two README edits, and node20 -> node24 in
+        # action.yml. dist/index.js is untouched, so the code we execute is
+        # identical. Move back to a tag as soon as one exists.
+        uses: rustsec/audit-check@858dc40f52ca2b8570b7a997c1c4e35c6fc9a432 # v2.0.0 + node24
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          working-directory: src-tauri
+          ignore: RUSTSEC-2026-0105,RUSTSEC-2025-0057,RUSTSEC-2024-0436

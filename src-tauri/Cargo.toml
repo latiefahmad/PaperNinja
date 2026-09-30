@@ -1,0 +1,136 @@
+[package]
+name = "tauri-app"
+version = "1.0.1"
+description = "Compress, convert and edit PDFs, images and documents on your own machine."
+authors = ["shyhunter <shyhunter@users.noreply.github.com>"]
+homepage = "https://github.com/shyhunter/PaperNinja"
+repository = "https://github.com/shyhunter/PaperNinja"
+license = "MIT"
+edition = "2021"
+default-run = "tauri-app"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+# The `_lib` suffix may seem redundant but it is necessary
+# to make the lib name unique and wouldn't conflict with the bin name.
+# This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
+name = "tauri_app_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tauri-plugin-dialog = "2"
+tauri-plugin-fs = "2"
+tauri-plugin-store = "2"
+tauri-plugin-shell = "2"
+tauri-plugin-http = "2"
+image = "0.25"
+flate2 = "1"
+# qpdf, statically linked. `vendored` builds qpdf, zlib and libjpeg from the
+# crate's own source tree with cc, so there is no sidecar binary, no companion
+# DLL on Windows, and no release-time download -- the three things that made the
+# Ghostscript sidecar the least-proven part of the Windows build. Apache-2.0 OR
+# MIT, so unlike Ghostscript it carries no copyleft into a commercial release.
+qpdf = { version = "0.3", features = ["vendored"] }
+webp = "0.3"
+uuid = { version = "1", features = ["v4"] }
+url = "2"
+tokio = { version = "1", features = ["sync", "time"] }
+
+# E2E automation — opt-in via `--features e2e`. Never enabled in release builds.
+# MUST stay in this table: everything below the `[target.'cfg(target_os = "macos")'
+# .dependencies]` header belongs to that table, so declaring it there made the
+# crate macOS-only and broke `--features e2e` builds on Linux CI with
+# "unresolved module or unlinked crate". It was moved out of a
+# `[target.'cfg(debug_assertions)'.dependencies]` table once before for the same
+# class of reason — Cargo evaluates those against target spec triples.
+tauri-plugin-webdriver-automation = { version = "0.1", optional = true }
+
+# Native HTML → PDF export via the OS webview (WKWebView), used instead of
+# driving Word/LibreOffice for this one conversion — renders HTML the way a
+# browser would and needs no external app installed. Measures the page's real
+# content height via JS first and expands the render surface to match before
+# exporting, so normal long/scrolling documents are captured in full instead
+# of just the initial viewport. (NSPrintOperation — the pipeline that would
+# also honor @media print — was tried and reliably produced blank pages for
+# WKWebView in headless/non-modal mode; createPDF is what's proven to work.)
+# Export is sliced into letter-proportioned page-sized chunks and merged with
+# PDFKit, rather than one oversized page — WebKit silently re-splits any
+# single page taller than ~14,400pt at an arbitrary pixel boundary, which is
+# what produced the "2 pages that look wrong" report.
+# Versions match what wry (Tauri's webview runtime) already pulls in, so
+# these resolve to the same crate instances rather than a duplicate copy.
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6"
+block2 = "0.6"
+objc2-foundation = { version = "0.3", default-features = false, features = [
+    "std", "NSString", "NSURL", "NSData", "NSError", "NSObject", "NSValue", "NSKeyValueCoding",
+] }
+objc2-core-foundation = { version = "0.3", default-features = false, features = ["std", "CFNumber"] }
+objc2-web-kit = { version = "0.3", default-features = false, features = [
+    "std", "WKWebView", "WKNavigation", "WKPDFConfiguration", "block2",
+    "WKWebViewConfiguration", "WKPreferences", "objc2-core-foundation",
+] }
+objc2-pdf-kit = { version = "0.3", default-features = false, features = [
+    "std", "PDFDocument", "PDFPage", "objc2-core-graphics",
+] }
+
+# HEIC decoding via the OS. Every iPhone photo is HEIC by default, and no
+# permissively-licensed Rust decoder exists — the pure-Rust ones are AGPL, which
+# an MIT app cannot take, and libheif means shipping LGPL C libraries built for
+# four targets. macOS has a decoder in the OS, so we use it and report the limit
+# honestly elsewhere (see heic.rs). objc2-core-graphics is already in the tree
+# via wry, so this resolves to the same crate instance.
+objc2-core-graphics = { version = "0.3", default-features = false, features = [
+    "std", "CGImage", "CGContext", "CGColorSpace", "CGBitmapContext", "CGGeometry",
+    "CGPDFDocument", "CGPDFPage", "CGPDFContext", "CGDataConsumer",
+] }
+# Drawing the invisible text layer. System fonts cover every language Vision can
+# read — a bundled Latin font would give a searchable layer for about half of
+# them and fail silently on the rest. Already in the lockfile via wry.
+objc2-core-text = { version = "0.3", default-features = false, features = [
+    "std", "CTFont", "CTLine", "CTStringAttributes", "objc2-core-graphics",
+] }
+objc2-image-io = { version = "0.3", default-features = false, features = [
+    # CGImageProperties carries kCGImagePropertyOrientation: an iPhone stores its
+    # photos in one sensor orientation and records the upright turn as metadata,
+    # which Image I/O reports but does not apply.
+    "std", "CGImageSource", "CGImageProperties", "objc2-core-graphics",
+] }
+
+# OCR via the OS. Vision is the engine Preview and Photos use, covers 30
+# languages including the German and Turkish that F13b targets, and needs no
+# bundled binary, no language data and no P012 provenance — unlike Tesseract,
+# which is ~10 dylibs once leptonica and the image libraries are counted.
+objc2-vision = { version = "0.3", default-features = false, features = [
+    "std", "VNRequest", "VNRecognizeTextRequest", "VNObservation",
+    "VNRequestHandler", "VNTypes", "objc2-core-graphics", "objc2-core-foundation",
+] }
+
+
+[features]
+e2e = ["dep:tauri-plugin-webdriver-automation"]
+
+
+
+# Test builds decode, resample and re-encode real photographs, which is minutes
+# of work unoptimized. Named crates rather than `"*"`: optimizing every
+# dependency did make the local suite fast, and it also invalidated CI's Rust
+# cache and rebuilt several hundred crates at opt-level 2 -- rust-integration
+# went to 21 minutes on a job that is metered. These four are where the time
+# actually goes.
+[profile.test.package.image]
+opt-level = 2
+[profile.test.package.zune-jpeg]
+opt-level = 2
+[profile.test.package.flate2]
+opt-level = 2
+[profile.test.package.miniz_oxide]
+opt-level = 2

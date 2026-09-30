@@ -1,0 +1,55 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Default app capabilities",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "core:window:allow-destroy",
+    "core:window:allow-close",
+    "dialog:allow-open",
+    "dialog:allow-save",
+    "dialog:allow-ask",
+    {
+      "identifier": "fs:allow-read-file",
+      "allow": [
+        { "path": "$DOCUMENT/**" },
+        { "path": "$DOWNLOAD/**" },
+        { "path": "$DESKTOP/**" },
+        { "path": "$TEMP/**" }
+      ]
+    },
+    {
+      "identifier": "fs:allow-write-file",
+      "allow": [
+        { "path": "$DOCUMENT/**" },
+        { "path": "$DOWNLOAD/**" },
+        { "path": "$DESKTOP/**" },
+        { "path": "$TEMP/**" }
+      ]
+    },
+    {
+      "identifier": "fs:allow-remove",
+      "allow": [{ "path": "$TEMP/**" }]
+    },
+    "store:default",
+    {
+      "identifier": "fs:allow-exists",
+      "allow": [
+        { "path": "$DOCUMENT/**" },
+        { "path": "$DOWNLOAD/**" },
+        { "path": "$DESKTOP/**" },
+        { "path": "$TEMP/**" }
+      ]
+    },
+    "shell:allow-open",
+    "opener:default",
+    {
+      "identifier": "http:default",
+      "allow": [
+        { "url": "https://api.github.com/repos/shyhunter/PaperNinja/releases/latest" },
+        { "url": "https://raw.githubusercontent.com/shyhunter/PaperNinja/main/feedback-config.json" }
+      ]
+    }
+  ]
+}

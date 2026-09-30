@@ -1,0 +1,194 @@
+name: Release Smoke Test
+
+# Verify release artifacts launch standalone — no extra software required.
+# Only runs manually to avoid burning CI minutes on automatic triggers.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to test (e.g. v1.0.0-beta.3)"
+        required: true
+        type: string
+
+permissions:
+  contents: write  # write needed to read draft releases via gh CLI
+
+jobs:
+  smoke-test:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+            asset: "PaperNinja_{version}_aarch64.dmg"
+            type: dmg
+          - platform: macos-14
+            asset: "PaperNinja_{version}_x64.dmg"
+            type: dmg
+          - platform: windows-latest
+            asset: "PaperNinja_{version}_x64-setup.exe"
+            type: nsis
+          - platform: ubuntu-22.04
+            asset: "PaperNinja_{version}_amd64.AppImage"
+            type: appimage
+
+    runs-on: ${{ matrix.platform }}
+    timeout-minutes: 10
+
+    env:
+      TAG: ${{ inputs.tag }}
+      VERSION: ""
+
+    steps:
+      - name: Derive asset filename
+        id: asset
+        shell: bash
+        run: |
+          VERSION="${TAG#v}"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          ASSET=$(echo "${{ matrix.asset }}" | sed "s/{version}/$VERSION/g")
+          echo "filename=${ASSET}" >> "$GITHUB_OUTPUT"
+          echo "Will download: ${ASSET}"
+
+      - name: Download release artifact
+        shell: bash
+        run: |
+          # Verify the release and asset exist before downloading
+          if ! gh release view "$TAG" --repo "${{ github.repository }}" --json assets -q ".assets[].name" 2>/dev/null | grep -q "${{ steps.asset.outputs.filename }}"; then
+            echo "FAIL: Asset ${{ steps.asset.outputs.filename }} not found in release $TAG"
+            echo "Available assets:"
+            gh release view "$TAG" --repo "${{ github.repository }}" --json assets -q ".assets[].name" 2>/dev/null || echo "(release not found)"
+            exit 1
+          fi
+
+          gh release download "$TAG" \
+            --repo "${{ github.repository }}" \
+            --pattern "${{ steps.asset.outputs.filename }}" \
+            --dir .
+          ls -la "${{ steps.asset.outputs.filename }}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── macOS (.dmg) ──
+      - name: "macOS: Mount DMG and verify app launches"
+        if: matrix.type == 'dmg'
+        run: |
+          hdiutil attach "${{ steps.asset.outputs.filename }}" -nobrowse -mountpoint /Volumes/PaperNinja
+          test -d "/Volumes/PaperNinja/PaperNinja.app" || { echo "FAIL: PaperNinja.app not found in DMG"; exit 1; }
+
+          echo "=== Contents/MacOS/ ==="
+          ls -la /Volumes/PaperNinja/PaperNinja.app/Contents/MacOS/
+
+          # The main binary is "tauri-app" (Cargo package name).
+          BINARY="/Volumes/PaperNinja/PaperNinja.app/Contents/MacOS/tauri-app"
+          if [ ! -x "$BINARY" ]; then
+            BINARY="/Volumes/PaperNinja/PaperNinja.app/Contents/MacOS/PaperNinja"
+          fi
+          if [ ! -x "$BINARY" ]; then
+            echo "FAIL: No app binary found in Contents/MacOS/"
+            exit 1
+          fi
+          echo "Found binary: $(basename "$BINARY")"
+
+          echo "=== Launch test ==="
+          "$BINARY" &
+          APP_PID=$!
+          sleep 8
+
+          if kill -0 "$APP_PID" 2>/dev/null; then
+            echo "PASS: PaperNinja running with PID: $APP_PID"
+          else
+            echo "FAIL: PaperNinja exited prematurely"
+            exit 1
+          fi
+
+          kill "$APP_PID" 2>/dev/null || true
+          sleep 2
+          hdiutil detach /Volumes/PaperNinja
+          echo "=== macOS smoke test PASSED ==="
+
+      # ── Windows (NSIS .exe) ──
+      - name: "Windows: Install and verify app launches"
+        if: matrix.type == 'nsis'
+        shell: pwsh
+        run: |
+          $installer = "${{ steps.asset.outputs.filename }}"
+          Write-Host "=== Running silent install ==="
+          Start-Process -FilePath ".\$installer" -ArgumentList "/S" -Wait -NoNewWindow
+
+          # Search common install locations for the binary
+          $searchPaths = @(
+            "$env:LOCALAPPDATA\PaperNinja\PaperNinja.exe",
+            "$env:LOCALAPPDATA\Programs\PaperNinja\PaperNinja.exe",
+            "$env:ProgramFiles\PaperNinja\PaperNinja.exe"
+          )
+
+          $binary = $null
+          foreach ($path in $searchPaths) {
+            if (Test-Path $path) {
+              $binary = $path
+              break
+            }
+          }
+
+          if (-Not $binary) {
+            Write-Host "Not in common paths, searching..."
+            $found = Get-ChildItem -Path "$env:LOCALAPPDATA" -Recurse -Filter "PaperNinja.exe" -ErrorAction SilentlyContinue -Depth 3 | Select-Object -First 1
+            if ($found) { $binary = $found.FullName }
+          }
+
+          if (-Not $binary) {
+            Write-Host "FAIL: PaperNinja.exe not found after install"
+            exit 1
+          }
+
+          Write-Host "=== Binary found at: $binary ==="
+
+          Write-Host "=== Launch test ==="
+          $proc = Start-Process -FilePath $binary -PassThru
+          Start-Sleep -Seconds 8
+
+          if (-Not $proc.HasExited) {
+            Write-Host "PASS: PaperNinja is running (PID: $($proc.Id))"
+            Stop-Process -Id $proc.Id -Force
+          } else {
+            Write-Host "FAIL: PaperNinja exited immediately with code $($proc.ExitCode)"
+            exit 1
+          }
+          Write-Host "=== Windows smoke test PASSED ==="
+
+      # ── Linux (AppImage) ──
+      - name: "Linux: Install display dependencies"
+        if: matrix.type == 'appimage'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-0 libfuse2 xvfb
+
+      - name: "Linux: Verify AppImage launches"
+        if: matrix.type == 'appimage'
+        run: |
+          APPIMAGE="${{ steps.asset.outputs.filename }}"
+          chmod +x "$APPIMAGE"
+
+          echo "=== Launch test under Xvfb ==="
+          export DISPLAY=:99
+          Xvfb :99 -screen 0 1280x720x24 &
+          XVFB_PID=$!
+          sleep 2
+
+          ./"$APPIMAGE" &
+          APP_PID=$!
+          sleep 8
+
+          if kill -0 "$APP_PID" 2>/dev/null; then
+            echo "PASS: PaperNinja AppImage is running (PID: $APP_PID)"
+          else
+            echo "FAIL: PaperNinja AppImage exited prematurely"
+            kill "$XVFB_PID" 2>/dev/null || true
+            exit 1
+          fi
+
+          kill "$APP_PID" 2>/dev/null || true
+          kill "$XVFB_PID" 2>/dev/null || true
+          echo "=== Linux smoke test PASSED ==="

@@ -1,0 +1,880 @@
+// EditorContext: state management for the full-page PDF editor (Phase 16).
+// Provides zoom, page navigation, dirty tracking, text editing state, and keyboard shortcuts.
+//
+// Uses useReducer for complex state transitions.
+import React, {
+  createContext,
+  useContext,
+  useReducer,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import type { ReactNode } from 'react';
+import { PDFDocument, PageSizes } from 'pdf-lib';
+import type { WatermarkOptions } from '@/lib/pdfWatermark';
+import type { RedactionRect } from '@/components/redact-pdf/RedactOverlay';
+import { DEFAULT_REDACTION_COLOR } from '@/lib/pdfRedact';
+import type { ImageBlock } from '@/types/editor';
+import type { TextMatch } from '@/lib/pdfTextSearch';
+import type { EditorViewState, ZoomPreset, PageEditState, TextBlock, EditorMode, CompareMode } from '@/types/editor';
+import { t } from '@/i18n';
+
+// ── Actions ────────────────────────────────────────────────────────────
+
+type EditorAction =
+  | { type: 'SET_ZOOM'; zoom: number }
+  | { type: 'SET_ZOOM_PRESET'; preset: ZoomPreset; fitWidthZoom: number }
+  | { type: 'SET_CURRENT_PAGE'; page: number }
+  | { type: 'MARK_DIRTY' }
+  | { type: 'CLEAR_DIRTY' }
+  | { type: 'UPDATE_PDF_BYTES'; bytes: Uint8Array; pageCount?: number; pages?: PageEditState[] }
+  | { type: 'APPLY_PAGE_NUMBERS'; base: Uint8Array; numbered: Uint8Array }
+  | { type: 'REMOVE_PAGE_NUMBERS' }
+  | { type: 'REVERT_TO_ORIGINAL' }
+  | { type: 'SET_WATERMARK_DRAFT'; draft: WatermarkOptions | null }
+  | { type: 'SET_REDACTION_DRAFT'; draft: RedactionRect[] | null }
+  | { type: 'SET_REDACTION_COLOR'; color: string }
+  | { type: 'SET_FILE_PATH'; path: string }
+  | { type: 'SET_FILE_NAME'; name: string }
+  | { type: 'INIT'; state: EditorViewState }
+  | { type: 'SELECT_BLOCK'; id: string | null }
+  | { type: 'START_EDITING'; id: string }
+  | { type: 'STOP_EDITING' }
+  | { type: 'SET_EDITOR_MODE'; mode: EditorMode }
+  | { type: 'SET_PAGE_TEXT_BLOCKS'; pageIdx: number; blocks: TextBlock[] }
+  | { type: 'UPDATE_TEXT_BLOCK'; pageIdx: number; block: TextBlock }
+  | { type: 'ADD_TEXT_BLOCK'; pageIdx: number; block: TextBlock }
+  | { type: 'ADD_IMAGE_BLOCK'; pageIdx: number; block: ImageBlock }
+  | { type: 'UPDATE_IMAGE_BLOCK'; pageIdx: number; block: ImageBlock }
+  | { type: 'DELETE_IMAGE_BLOCK'; pageIdx: number; blockId: string }
+  | { type: 'DELETE_TEXT_BLOCK'; pageIdx: number; blockId: string }
+  | { type: 'SET_COMPARE_MODE'; mode: CompareMode }
+  | { type: 'SET_SEARCH_MATCHES'; matches: TextMatch[] }
+  | { type: 'SET_SEARCH_CURRENT'; index: number };
+
+// ── Reducer ────────────────────────────────────────────────────────────
+
+const ZOOM_MIN = 0.25;
+const ZOOM_MAX = 3.0;
+const ZOOM_STEP = 0.25;
+
+function clampZoom(z: number): number {
+  return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, z));
+}
+
+/** Fresh, edit-free overlay state for a document of `pageCount` pages. */
+function createEmptyPages(pageCount: number): PageEditState[] {
+  return Array.from({ length: pageCount }, (_, i) => ({
+    pageIndex: i,
+    textBlocks: [],
+    imageBlocks: [],
+    deletedTextIds: [],
+    deletedImageIds: [],
+    deletedTextBlocks: [],
+    deletedImageBlocks: [],
+  }));
+}
+
+/**
+ * Exported for tests. The grouped-stamp rules in UPDATE_IMAGE_BLOCK are pure
+ * state maths and the only place the "move one, move all" behaviour lives; a
+ * test that drove them through the provider would be testing React instead.
+ */
+export function editorReducer(state: EditorViewState, action: EditorAction): EditorViewState {
+  switch (action.type) {
+    case 'SET_ZOOM':
+      return { ...state, zoom: clampZoom(action.zoom), zoomPreset: null };
+    case 'SET_ZOOM_PRESET': {
+      if (action.preset === 'fit-width') {
+        return { ...state, zoom: action.fitWidthZoom, zoomPreset: 'fit-width' };
+      }
+      return { ...state, zoom: action.preset, zoomPreset: action.preset };
+    }
+    case 'SET_CURRENT_PAGE':
+      return { ...state, currentPage: action.page };
+    case 'MARK_DIRTY':
+      return { ...state, isDirty: true };
+    case 'CLEAR_DIRTY':
+      return { ...state, isDirty: false };
+    case 'UPDATE_PDF_BYTES': {
+      // Another tool has written to the document, so the page-number base no
+      // longer describes it. Restoring it later would discard this edit.
+      const updates: Partial<EditorViewState> = {
+        pdfBytes: action.bytes,
+        isDirty: true,
+        pageNumberBase: null,
+      };
+      if (action.pageCount !== undefined) updates.pageCount = action.pageCount;
+      if (action.pages !== undefined) updates.pages = action.pages;
+      return { ...state, ...updates };
+    }
+    case 'APPLY_PAGE_NUMBERS':
+      // Re-applying (e.g. a colour change) keeps the ORIGINAL base: the numbered
+      // bytes must never become the base, or the next apply stacks on top.
+      return {
+        ...state,
+        pdfBytes: action.numbered,
+        pageNumberBase: state.pageNumberBase ?? action.base,
+        isDirty: true,
+      };
+    case 'REMOVE_PAGE_NUMBERS':
+      if (!state.pageNumberBase) return state;
+      return {
+        ...state,
+        pdfBytes: state.pageNumberBase,
+        pageNumberBase: null,
+        isDirty: true,
+      };
+    case 'SET_WATERMARK_DRAFT':
+      return { ...state, watermarkDraft: action.draft };
+
+    case 'SET_REDACTION_DRAFT':
+      return { ...state, redactionDraft: action.draft };
+
+    case 'SET_REDACTION_COLOR':
+      return { ...state, redactionColor: action.color };
+    case 'REVERT_TO_ORIGINAL':
+      // Every derived piece of edit state has to go with the bytes. Page
+      // overlays are applied at save time, so a survivor would be written back
+      // on top of the restored document.
+      return {
+        ...state,
+        pdfBytes: state.originalPdfBytes,
+        pageCount: state.originalPageCount,
+        pages: createEmptyPages(state.originalPageCount),
+        pageNumberBase: null,
+        selectedBlockId: null,
+        editingBlockId: null,
+        currentPage: 0,
+        // Deliberately dirty: if the edits were already saved, the file on disk
+        // still holds them and the restored document needs writing back.
+        isDirty: true,
+      };
+    case 'SET_FILE_PATH':
+      return { ...state, filePath: action.path };
+    case 'SET_FILE_NAME':
+      return { ...state, fileName: action.name };
+    case 'INIT':
+      return action.state;
+    case 'SELECT_BLOCK':
+      return { ...state, selectedBlockId: action.id, editingBlockId: action.id === null ? null : state.editingBlockId };
+    case 'START_EDITING':
+      return { ...state, selectedBlockId: action.id, editingBlockId: action.id };
+    case 'STOP_EDITING':
+      return { ...state, editingBlockId: null };
+    case 'SET_EDITOR_MODE':
+      return { ...state, editorMode: action.mode, selectedBlockId: null, editingBlockId: null };
+    case 'SET_PAGE_TEXT_BLOCKS': {
+      const pages = state.pages.map((p, i) =>
+        i === action.pageIdx ? { ...p, textBlocks: action.blocks } : p,
+      );
+      return { ...state, pages };
+    }
+    case 'UPDATE_TEXT_BLOCK': {
+      const pages = state.pages.map((p, i) => {
+        if (i !== action.pageIdx) return p;
+        const textBlocks = p.textBlocks.map((b) =>
+          b.id === action.block.id ? action.block : b,
+        );
+        return { ...p, textBlocks };
+      });
+      return { ...state, pages, isDirty: true };
+    }
+    case 'ADD_TEXT_BLOCK': {
+      const pages = state.pages.map((p, i) => {
+        if (i !== action.pageIdx) return p;
+        return { ...p, textBlocks: [...p.textBlocks, action.block] };
+      });
+      return { ...state, pages, isDirty: true };
+    }
+    case 'ADD_IMAGE_BLOCK': {
+      const pages = state.pages.map((p, i) =>
+        i === action.pageIdx ? { ...p, imageBlocks: [...p.imageBlocks, action.block] } : p,
+      );
+      return { ...state, pages, isDirty: true, selectedBlockId: action.block.id };
+    }
+    case 'UPDATE_IMAGE_BLOCK': {
+      // A grouped stamp moves as one. The geometry is copied to every sibling,
+      // and nothing else is: each keeps its own id and its own page, and the
+      // bytes are already the same array on every page by design.
+      const { groupId } = action.block;
+      const geometry = {
+        x: action.block.x,
+        y: action.block.y,
+        width: action.block.width,
+        height: action.block.height,
+        rotation: action.block.rotation,
+        flipH: action.block.flipH,
+        flipV: action.block.flipV,
+      };
+
+      const pages = state.pages.map((p, i) => {
+        const onThisPage = i === action.pageIdx;
+        if (!onThisPage && !groupId) return p;
+
+        let touched = false;
+        const imageBlocks = p.imageBlocks.map((b) => {
+          if (onThisPage && b.id === action.block.id) { touched = true; return action.block; }
+          if (groupId && b.groupId === groupId && b.id !== action.block.id) {
+            touched = true;
+            return { ...b, ...geometry };
+          }
+          return b;
+        });
+        return touched ? { ...p, imageBlocks } : p;
+      });
+      return { ...state, pages, isDirty: true };
+    }
+    case 'DELETE_IMAGE_BLOCK': {
+      const pages = state.pages.map((p, i) =>
+        i === action.pageIdx
+          ? { ...p, imageBlocks: p.imageBlocks.filter((b) => b.id !== action.blockId) }
+          : p,
+      );
+      return {
+        ...state, pages, isDirty: true,
+        selectedBlockId: state.selectedBlockId === action.blockId ? null : state.selectedBlockId,
+      };
+    }
+    case 'DELETE_TEXT_BLOCK': {
+      const pages = state.pages.map((p, i) => {
+        if (i !== action.pageIdx) return p;
+        const deleted = p.textBlocks.find((b) => b.id === action.blockId);
+        const textBlocks = p.textBlocks.filter((b) => b.id !== action.blockId);
+        const deletedTextIds = deleted && !deleted.isNew
+          ? [...p.deletedTextIds, action.blockId]
+          : p.deletedTextIds;
+        const deletedTextBlocks = deleted && !deleted.isNew
+          ? [...p.deletedTextBlocks, { id: deleted.id, x: deleted.x, y: deleted.y, width: deleted.width, height: deleted.height }]
+          : p.deletedTextBlocks;
+        return { ...p, textBlocks, deletedTextIds, deletedTextBlocks };
+      });
+      return {
+        ...state, pages, isDirty: true,
+        selectedBlockId: state.selectedBlockId === action.blockId ? null : state.selectedBlockId,
+        editingBlockId: state.editingBlockId === action.blockId ? null : state.editingBlockId,
+      };
+    }
+    case 'SET_COMPARE_MODE':
+      return { ...state, compareMode: action.mode };
+    case 'SET_SEARCH_MATCHES':
+      // Standing on the first result rather than none: the user pressed Enter to
+      // go somewhere, so landing nowhere would need a second keystroke.
+      return { ...state, searchMatches: action.matches, searchCurrent: action.matches.length > 0 ? 0 : -1 };
+    case 'SET_SEARCH_CURRENT': {
+      // Wraps at both ends. Next from the last result goes back to the first,
+      // which is what every find bar does.
+      const total = state.searchMatches.length;
+      if (total === 0) return { ...state, searchCurrent: -1 };
+      return { ...state, searchCurrent: ((action.index % total) + total) % total };
+    }
+    default:
+      return state;
+  }
+}
+
+// ── Context value ──────────────────────────────────────────────────────
+
+interface EditorContextValue {
+  state: EditorViewState;
+  setZoom: (level: number) => void;
+  setZoomPreset: (preset: ZoomPreset) => void;
+  zoomIn: () => void;
+  zoomOut: () => void;
+  setCurrentPage: (idx: number) => void;
+  /** Replaces the search results and stands on the first, or on none. */
+  setSearchMatches: (matches: TextMatch[]) => void;
+  /** Moves between results, wrapping at both ends. */
+  setSearchCurrent: (index: number) => void;
+  markDirty: () => void;
+  clearDirty: () => void;
+  updatePdfBytes: (bytes: Uint8Array) => void;
+  /** Apply page numbers, remembering `base` so they can be taken off again. */
+  applyPageNumbers: (base: Uint8Array, numbered: Uint8Array) => void;
+  /** Restore the bytes from before page numbers were applied. No-op if none. */
+  removePageNumbers: () => void;
+  /** Discard every edit and restore the document as it was opened. */
+  revertToOriginal: () => void;
+  /** Whether saving should also strip identifying metadata. */
+  /** Set (or clear, with null) the watermark being configured. */
+  setWatermarkDraft: (draft: WatermarkOptions | null) => void;
+  /** Set (or clear, with null) the rectangles marked for redaction. */
+  setRedactionDraft: (draft: RedactionRect[] | null) => void;
+  setRedactionColor: (color: string) => void;
+  setFilePath: (path: string) => void;
+  setFileName: (name: string) => void;
+  /** Initialize full editor state (used by EditorView on PDF load) */
+  initState: (state: EditorViewState) => void;
+  /** Current fit-width zoom value (recalculated on resize) */
+  fitWidthZoom: number;
+  setFitWidthZoom: (z: number) => void;
+  // Page selection
+  selectedPages: Set<number>;
+  togglePageSelection: (idx: number, multi: boolean) => void;
+  selectPageRange: (from: number, to: number) => void;
+  clearPageSelection: () => void;
+
+  // Page operations
+  reorderPages: (fromIdx: number, toIdx: number) => void;
+  addBlankPage: (afterIdx: number) => void;
+  addPagesFromPdf: (afterIdx: number, pdfBytes: Uint8Array) => void;
+  deletePages: (indices: number[]) => void;
+  duplicatePages: (indices: number[]) => void;
+
+  // Scroll-to-page ref (set by EditorCanvas, used by PagePanel)
+  scrollToPageRef: React.MutableRefObject<((idx: number) => void) | null>;
+
+  // Text editing actions
+  selectBlock: (id: string | null) => void;
+  startEditing: (id: string) => void;
+  stopEditing: () => void;
+  setEditorMode: (mode: EditorMode) => void;
+  setCompareMode: (mode: CompareMode) => void;
+  setPageTextBlocks: (pageIdx: number, blocks: TextBlock[]) => void;
+  updateTextBlock: (pageIdx: number, block: TextBlock) => void;
+  addTextBlock: (pageIdx: number, block: TextBlock) => void;
+  /** Place a rasterised image -- a signature stamp today -- on a page. */
+  addImageBlock: (pageIdx: number, block: ImageBlock) => void;
+  updateImageBlock: (pageIdx: number, block: ImageBlock) => void;
+  deleteImageBlock: (pageIdx: number, blockId: string) => void;
+  deleteTextBlock: (pageIdx: number, blockId: string) => void;
+}
+
+const EditorCtx = createContext<EditorContextValue | null>(null);
+
+// ── Provider ───────────────────────────────────────────────────────────
+
+function createEmptyState(): EditorViewState {
+  return {
+    pdfBytes: new Uint8Array(0),
+    originalPdfBytes: new Uint8Array(0),
+    originalPageCount: 0,
+    pageNumberBase: null,
+    watermarkDraft: null,
+    redactionDraft: null,
+    redactionColor: DEFAULT_REDACTION_COLOR,
+    filePath: null,
+    fileName: '',
+    pageCount: 0,
+    zoom: 1.0,
+    zoomPreset: 'fit-width',
+    currentPage: 0,
+    isDirty: false,
+    pages: [],
+    selectedBlockId: null,
+    editingBlockId: null,
+    editorMode: 'select',
+    searchMatches: [],
+    searchCurrent: -1,
+    compareMode: 'off',
+  };
+}
+
+export function EditorProvider({ children }: { children: ReactNode }) {
+  const [state, dispatch] = useReducer(editorReducer, createEmptyState());
+  const fitWidthZoomRef = useRef(1.0);
+  const [selectedPages, setSelectedPages] = useState<Set<number>>(new Set());
+  const scrollToPageRef = useRef<((idx: number) => void) | null>(null);
+
+  const setFitWidthZoom = useCallback((z: number) => {
+    fitWidthZoomRef.current = z;
+  }, []);
+
+  const setZoom = useCallback((level: number) => {
+    dispatch({ type: 'SET_ZOOM', zoom: level });
+  }, []);
+
+  const setZoomPreset = useCallback((preset: ZoomPreset) => {
+    dispatch({ type: 'SET_ZOOM_PRESET', preset, fitWidthZoom: fitWidthZoomRef.current });
+  }, []);
+
+  const zoomIn = useCallback(() => {
+    dispatch({ type: 'SET_ZOOM', zoom: clampZoom(state.zoom + ZOOM_STEP) });
+  }, [state.zoom]);
+
+  const zoomOut = useCallback(() => {
+    dispatch({ type: 'SET_ZOOM', zoom: clampZoom(state.zoom - ZOOM_STEP) });
+  }, [state.zoom]);
+
+  const setCurrentPage = useCallback((idx: number) => {
+    dispatch({ type: 'SET_CURRENT_PAGE', page: idx });
+  }, []);
+
+  const setSearchMatches = useCallback((matches: TextMatch[]) => {
+    dispatch({ type: 'SET_SEARCH_MATCHES', matches });
+  }, []);
+
+  const setSearchCurrent = useCallback((index: number) => {
+    dispatch({ type: 'SET_SEARCH_CURRENT', index });
+  }, []);
+
+  const markDirty = useCallback(() => {
+    dispatch({ type: 'MARK_DIRTY' });
+  }, []);
+
+  const clearDirty = useCallback(() => {
+    dispatch({ type: 'CLEAR_DIRTY' });
+  }, []);
+
+  const updatePdfBytes = useCallback((bytes: Uint8Array) => {
+    dispatch({ type: 'UPDATE_PDF_BYTES', bytes });
+  }, []);
+
+  const applyPageNumbers = useCallback((base: Uint8Array, numbered: Uint8Array) => {
+    dispatch({ type: 'APPLY_PAGE_NUMBERS', base, numbered });
+  }, []);
+
+  const removePageNumbers = useCallback(() => {
+    dispatch({ type: 'REMOVE_PAGE_NUMBERS' });
+  }, []);
+
+  const revertToOriginal = useCallback(() => {
+    dispatch({ type: 'REVERT_TO_ORIGINAL' });
+  }, []);
+
+  const setWatermarkDraft = useCallback((draft: WatermarkOptions | null) => {
+    dispatch({ type: 'SET_WATERMARK_DRAFT', draft });
+  }, []);
+
+  const setRedactionDraft = useCallback((draft: RedactionRect[] | null) => {
+    dispatch({ type: 'SET_REDACTION_DRAFT', draft });
+  }, []);
+
+  const setRedactionColor = useCallback((color: string) => {
+    dispatch({ type: 'SET_REDACTION_COLOR', color });
+  }, []);
+
+  const setFilePath = useCallback((path: string) => {
+    dispatch({ type: 'SET_FILE_PATH', path });
+  }, []);
+
+  const setFileName = useCallback((name: string) => {
+    dispatch({ type: 'SET_FILE_NAME', name });
+  }, []);
+
+  const initState = useCallback((s: EditorViewState) => {
+    dispatch({ type: 'INIT', state: s });
+    setSelectedPages(new Set());
+  }, []);
+
+  const selectBlock = useCallback((id: string | null) => {
+    dispatch({ type: 'SELECT_BLOCK', id });
+  }, []);
+
+  const startEditing = useCallback((id: string) => {
+    dispatch({ type: 'START_EDITING', id });
+  }, []);
+
+  const stopEditing = useCallback(() => {
+    dispatch({ type: 'STOP_EDITING' });
+  }, []);
+
+  const setEditorMode = useCallback((mode: EditorMode) => {
+    dispatch({ type: 'SET_EDITOR_MODE', mode });
+  }, []);
+
+  const setCompareMode = useCallback((mode: CompareMode) => {
+    dispatch({ type: 'SET_COMPARE_MODE', mode });
+  }, []);
+
+  const setPageTextBlocks = useCallback((pageIdx: number, blocks: TextBlock[]) => {
+    dispatch({ type: 'SET_PAGE_TEXT_BLOCKS', pageIdx, blocks });
+  }, []);
+
+  const updateTextBlock = useCallback((pageIdx: number, block: TextBlock) => {
+    dispatch({ type: 'UPDATE_TEXT_BLOCK', pageIdx, block });
+  }, []);
+
+  const addImageBlock = useCallback((pageIdx: number, block: ImageBlock) => {
+    dispatch({ type: 'ADD_IMAGE_BLOCK', pageIdx, block });
+  }, []);
+
+  const updateImageBlock = useCallback((pageIdx: number, block: ImageBlock) => {
+    dispatch({ type: 'UPDATE_IMAGE_BLOCK', pageIdx, block });
+  }, []);
+
+  const deleteImageBlock = useCallback((pageIdx: number, blockId: string) => {
+    dispatch({ type: 'DELETE_IMAGE_BLOCK', pageIdx, blockId });
+  }, []);
+
+  const addTextBlock = useCallback((pageIdx: number, block: TextBlock) => {
+    dispatch({ type: 'ADD_TEXT_BLOCK', pageIdx, block });
+  }, []);
+
+  const deleteTextBlock = useCallback((pageIdx: number, blockId: string) => {
+    dispatch({ type: 'DELETE_TEXT_BLOCK', pageIdx, blockId });
+  }, []);
+
+  // Page selection callbacks (needed by PagePanel)
+  const togglePageSelection = useCallback((idx: number, multi: boolean) => {
+    setSelectedPages((prev) => {
+      const next = new Set(multi ? prev : []);
+      if (next.has(idx)) next.delete(idx);
+      else next.add(idx);
+      return next;
+    });
+  }, []);
+
+  const selectPageRange = useCallback((from: number, to: number) => {
+    const min = Math.min(from, to);
+    const max = Math.max(from, to);
+    const next = new Set<number>();
+    for (let i = min; i <= max; i++) next.add(i);
+    setSelectedPages(next);
+  }, []);
+
+  const clearPageSelection = useCallback(() => {
+    setSelectedPages(new Set());
+  }, []);
+
+  // Page operations
+  const reorderPages = useCallback(async (fromIdx: number, toIdx: number) => {
+    if (fromIdx === toIdx || state.pdfBytes.byteLength === 0) return;
+    if (fromIdx < 0 || fromIdx >= state.pageCount || toIdx < 0 || toIdx >= state.pageCount) return;
+    try {
+      const srcDoc = await PDFDocument.load(state.pdfBytes, { ignoreEncryption: true });
+      const numPages = srcDoc.getPageCount();
+      // Build new page order: remove fromIdx, insert at toIdx
+      const indices = Array.from({ length: numPages }, (_, i) => i);
+      const [moved] = indices.splice(fromIdx, 1);
+      indices.splice(toIdx, 0, moved);
+
+      const newDoc = await PDFDocument.create();
+      const copiedPages = await newDoc.copyPages(srcDoc, indices);
+      for (const page of copiedPages) newDoc.addPage(page);
+      const newBytes = new Uint8Array(await newDoc.save());
+
+      // Reorder page edit state to match new page order
+      const newPages = indices.map((oldIdx, newIdx) => ({
+        ...(state.pages[oldIdx] ?? {
+          pageIndex: newIdx,
+          textBlocks: [],
+          imageBlocks: [],
+          deletedTextIds: [],
+          deletedImageIds: [],
+          deletedTextBlocks: [],
+          deletedImageBlocks: [],
+        }),
+        pageIndex: newIdx,
+      }));
+      dispatch({ type: 'INIT', state: { ...state, pdfBytes: newBytes, pages: newPages, pageCount: numPages, isDirty: true } });
+    } catch (err) {
+      console.error('reorderPages failed:', err);
+      alert(t('editorContext.failedToReorderPages', { error: err instanceof Error ? err.message : String(err) }));
+    }
+  }, [state]);
+
+  const addBlankPage = useCallback(async (afterIdx: number) => {
+    try {
+      const doc = await PDFDocument.load(state.pdfBytes, { ignoreEncryption: true });
+      const page = doc.insertPage(afterIdx + 1, PageSizes.A4);
+      void page;
+      const newBytes = new Uint8Array(await doc.save({ useObjectStreams: false }));
+
+      const newPages = [...state.pages];
+      newPages.splice(afterIdx + 1, 0, {
+        pageIndex: afterIdx + 1,
+        textBlocks: [],
+        imageBlocks: [],
+        deletedTextIds: [],
+        deletedImageIds: [],
+        deletedTextBlocks: [],
+        deletedImageBlocks: [],
+      });
+      const reindexed = newPages.map((p, i) => ({ ...p, pageIndex: i }));
+
+      dispatch({
+        type: 'INIT',
+        state: {
+          ...state,
+          pdfBytes: newBytes,
+          pageCount: reindexed.length,
+          pages: reindexed,
+          isDirty: true,
+        },
+      });
+    } catch { /* ignore */ }
+  }, [state]);
+
+  const addPagesFromPdf = useCallback(async (afterIdx: number, sourcePdfBytes: Uint8Array) => {
+    try {
+      const targetDoc = await PDFDocument.load(state.pdfBytes, { ignoreEncryption: true });
+      const sourceDoc = await PDFDocument.load(sourcePdfBytes, { ignoreEncryption: true });
+      const sourcePageCount = sourceDoc.getPageCount();
+      if (sourcePageCount === 0) {
+        alert(t('editorContext.theSelectedPdfHasNo'));
+        return;
+      }
+      const indices = Array.from({ length: sourcePageCount }, (_, i) => i);
+      const copiedPages = await targetDoc.copyPages(sourceDoc, indices);
+      copiedPages.forEach((page, i) => targetDoc.insertPage(afterIdx + 1 + i, page));
+
+      const newBytes = new Uint8Array(await targetDoc.save({ useObjectStreams: false }));
+      const addedPages: PageEditState[] = copiedPages.map((_, i) => ({
+        pageIndex: afterIdx + 1 + i,
+        textBlocks: [],
+        imageBlocks: [],
+        deletedTextIds: [],
+        deletedImageIds: [],
+        deletedTextBlocks: [],
+        deletedImageBlocks: [],
+      }));
+
+      const newPages = [...state.pages];
+      newPages.splice(afterIdx + 1, 0, ...addedPages);
+      const reindexed = newPages.map((p, i) => ({ ...p, pageIndex: i }));
+
+      dispatch({
+        type: 'INIT',
+        state: {
+          ...state,
+          pdfBytes: newBytes,
+          pageCount: reindexed.length,
+          pages: reindexed,
+          isDirty: true,
+        },
+      });
+    } catch (err) {
+      console.error('addPagesFromPdf failed:', err);
+      alert(t('editorContext.failedToAddPages', { error: err instanceof Error ? err.message : String(err) }));
+    }
+  }, [state]);
+
+  const deletePages = useCallback(async (indices: number[]) => {
+    if (indices.length === 0 || indices.length >= state.pageCount) return;
+    try {
+      const doc = await PDFDocument.load(state.pdfBytes, { ignoreEncryption: true });
+      // Remove pages in reverse order to preserve indices
+      const sorted = [...indices].sort((a, b) => b - a);
+      sorted.forEach((idx) => doc.removePage(idx));
+
+      const newBytes = new Uint8Array(await doc.save({ useObjectStreams: false }));
+      const idxSet = new Set(indices);
+      const newPages = state.pages.filter((_, i) => !idxSet.has(i));
+      const reindexed = newPages.map((p, i) => ({ ...p, pageIndex: i }));
+
+      dispatch({
+        type: 'INIT',
+        state: {
+          ...state,
+          pdfBytes: newBytes,
+          pageCount: reindexed.length,
+          pages: reindexed,
+          isDirty: true,
+          currentPage: Math.min(state.currentPage, reindexed.length - 1),
+        },
+      });
+      setSelectedPages(new Set());
+    } catch { /* ignore */ }
+  }, [state]);
+
+  const duplicatePages = useCallback(async (indices: number[]) => {
+    if (indices.length === 0) return;
+    try {
+      const doc = await PDFDocument.load(state.pdfBytes, { ignoreEncryption: true });
+      const sorted = [...indices].sort((a, b) => a - b);
+      let offset = 0;
+      for (const idx of sorted) {
+        const [copiedPage] = await doc.copyPages(doc, [idx + offset]);
+        doc.insertPage(idx + offset + 1, copiedPage);
+        offset++;
+      }
+
+      const newBytes = new Uint8Array(await doc.save({ useObjectStreams: false }));
+      const newPages = [...state.pages];
+      let dupOffset = 0;
+      for (const idx of sorted) {
+        const insertAt = idx + dupOffset + 1;
+        newPages.splice(insertAt, 0, {
+          pageIndex: insertAt,
+          textBlocks: [],
+          imageBlocks: [],
+          deletedTextIds: [],
+          deletedImageIds: [],
+          deletedTextBlocks: [],
+          deletedImageBlocks: [],
+        });
+        dupOffset++;
+      }
+      const reindexed = newPages.map((p, i) => ({ ...p, pageIndex: i }));
+
+      dispatch({
+        type: 'INIT',
+        state: {
+          ...state,
+          pdfBytes: newBytes,
+          pageCount: reindexed.length,
+          pages: reindexed,
+          isDirty: true,
+        },
+      });
+    } catch { /* ignore */ }
+  }, [state]);
+
+  // Keyboard shortcuts: Cmd+= zoom in, Cmd+- zoom out, Cmd+0 fit-width
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (!e.metaKey && !e.ctrlKey) return;
+
+      if (e.key === '=' || e.key === '+') {
+        e.preventDefault();
+        dispatch({ type: 'SET_ZOOM', zoom: clampZoom(state.zoom + ZOOM_STEP) });
+      } else if (e.key === '-') {
+        e.preventDefault();
+        dispatch({ type: 'SET_ZOOM', zoom: clampZoom(state.zoom - ZOOM_STEP) });
+      } else if (e.key === '0') {
+        e.preventDefault();
+        dispatch({
+          type: 'SET_ZOOM_PRESET',
+          preset: 'fit-width',
+          fitWidthZoom: fitWidthZoomRef.current,
+        });
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [state.zoom]);
+
+  const value = useMemo<EditorContextValue>(
+    () => ({
+      state,
+      setZoom,
+      setZoomPreset,
+      zoomIn,
+      zoomOut,
+      setCurrentPage,
+      setSearchMatches,
+      setSearchCurrent,
+      markDirty,
+      clearDirty,
+      updatePdfBytes,
+      applyPageNumbers,
+      removePageNumbers,
+      revertToOriginal,
+      setWatermarkDraft,
+      setRedactionDraft,
+      setRedactionColor,
+      setFilePath,
+      setFileName,
+      initState,
+      fitWidthZoom: fitWidthZoomRef.current,
+      setFitWidthZoom,
+      selectBlock,
+      startEditing,
+      stopEditing,
+      setEditorMode,
+      setCompareMode,
+      setPageTextBlocks,
+      updateTextBlock,
+      addTextBlock,
+      addImageBlock,
+      updateImageBlock,
+      deleteImageBlock,
+      deleteTextBlock,
+      // Page management
+      selectedPages,
+      togglePageSelection,
+      selectPageRange,
+      clearPageSelection,
+      reorderPages,
+      addBlankPage,
+      addPagesFromPdf,
+      deletePages,
+      duplicatePages,
+      scrollToPageRef,
+    }),
+    [
+      state,
+      setZoom,
+      setZoomPreset,
+      zoomIn,
+      zoomOut,
+      setCurrentPage,
+      setSearchMatches,
+      setSearchCurrent,
+      markDirty,
+      clearDirty,
+      updatePdfBytes,
+      applyPageNumbers,
+      removePageNumbers,
+      revertToOriginal,
+      setWatermarkDraft,
+      setRedactionDraft,
+      setRedactionColor,
+      setFilePath,
+      setFileName,
+      initState,
+      setFitWidthZoom,
+      selectBlock,
+      startEditing,
+      stopEditing,
+      setEditorMode,
+      setCompareMode,
+      setPageTextBlocks,
+      updateTextBlock,
+      addTextBlock,
+      addImageBlock,
+      updateImageBlock,
+      deleteImageBlock,
+      deleteTextBlock,
+      selectedPages,
+      togglePageSelection,
+      selectPageRange,
+      clearPageSelection,
+      reorderPages,
+      addBlankPage,
+      addPagesFromPdf,
+      deletePages,
+      duplicatePages,
+    ],
+  );
+
+  return <EditorCtx.Provider value={value}>{children}</EditorCtx.Provider>;
+}
+
+export function useEditorContext(): EditorContextValue {
+  const ctx = useContext(EditorCtx);
+  if (!ctx) {
+    throw new Error('useEditorContext must be used within an <EditorProvider>');
+  }
+  return ctx;
+}
+
+// Re-export for convenience — initialise state from loaded PDF
+export function createEditorViewState(
+  pdfBytes: Uint8Array,
+  pageCount: number,
+  fileName: string,
+  filePath: string | null,
+  fitWidthZoom: number,
+): EditorViewState {
+  const pages = createEmptyPages(pageCount);
+
+  return {
+    pdfBytes,
+    originalPdfBytes: pdfBytes.slice(), // Snapshot — never modified
+    originalPageCount: pageCount,
+    pageNumberBase: null,
+    watermarkDraft: null,
+    redactionDraft: null,
+    redactionColor: DEFAULT_REDACTION_COLOR,
+    filePath,
+    fileName,
+    pageCount,
+    zoom: fitWidthZoom,
+    zoomPreset: 'fit-width',
+    currentPage: 0,
+    isDirty: false,
+    pages,
+    selectedBlockId: null,
+    editingBlockId: null,
+    editorMode: 'select',
+    searchMatches: [],
+    searchCurrent: -1,
+    compareMode: 'off',
+  };
+}

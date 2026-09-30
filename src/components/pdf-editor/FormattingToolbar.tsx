@@ -1,0 +1,267 @@
+// FormattingToolbar: horizontal formatting bar for text editing in the PDF editor.
+// Shows font family, size, color, and bold/italic/underline toggles.
+// Integrated into EditorTopToolbar, always visible (disabled when no block selected).
+
+import { useCallback, useState } from 'react';
+import { Bold, Italic, Underline, Plus, Minus, Type, AlignVerticalSpaceAround } from 'lucide-react';
+import { useEditorContext } from '@/context/EditorContext';
+import type { TextBlock } from '@/types/editor';
+import { ColorPicker } from '@/components/ColorPicker';
+import { DEFAULT_TEXT_COLOR } from '@/lib/colorPresets';
+import { t } from '@/i18n';
+import { SearchBar } from './SearchBar';
+
+/** Standard PDF fonts available in pdf-lib */
+const FONT_OPTIONS = [
+  { value: 'Helvetica', label: 'Helvetica' },
+  { value: 'TimesRoman', label: 'Times Roman' },
+  { value: 'Courier', label: 'Courier' },
+];
+
+/** Common color presets */
+export function FormattingToolbar() {
+  const { state, updateTextBlock, setEditorMode } = useEditorContext();
+  const { selectedBlockId, editorMode, pages, currentPage } = state;
+  const [showColorPicker, setShowColorPicker] = useState(false);
+
+  // Find the selected block across all pages
+  const selectedBlock: TextBlock | null = (() => {
+    if (!selectedBlockId) return null;
+    for (const page of pages) {
+      const block = page.textBlocks.find((b) => b.id === selectedBlockId);
+      if (block) return block;
+    }
+    return null;
+  })();
+
+  const selectedPageIdx: number = (() => {
+    if (!selectedBlockId) return currentPage;
+    for (const page of pages) {
+      const block = page.textBlocks.find((b) => b.id === selectedBlockId);
+      if (block) return page.pageIndex;
+    }
+    return currentPage;
+  })();
+
+  const isDisabled = !selectedBlock;
+
+  // Update a property on the selected block
+  const updateProp = useCallback(
+    (props: Partial<TextBlock>) => {
+      if (!selectedBlock) return;
+      updateTextBlock(selectedPageIdx, { ...selectedBlock, ...props, isModified: true });
+    },
+    [selectedBlock, selectedPageIdx, updateTextBlock],
+  );
+
+  const handleFontChange = useCallback(
+    (fontName: string) => updateProp({ fontName }),
+    [updateProp],
+  );
+
+  const handleFontSizeChange = useCallback(
+    (delta: number) => {
+      if (!selectedBlock) return;
+      const oldSize = selectedBlock.fontSize;
+      const newSize = Math.max(6, Math.min(72, Math.round(oldSize + delta)));
+      const scale = newSize / oldSize;
+      updateProp({ fontSize: newSize, height: selectedBlock.height * scale });
+    },
+    [selectedBlock, updateProp],
+  );
+
+  const handleFontSizeInput = useCallback(
+    (value: string) => {
+      if (!selectedBlock) return;
+      const num = parseInt(value, 10);
+      if (!isNaN(num) && num >= 6 && num <= 72) {
+        const scale = num / selectedBlock.fontSize;
+        updateProp({ fontSize: num, height: selectedBlock.height * scale });
+      }
+    },
+    [selectedBlock, updateProp],
+  );
+
+  const handleColorChange = useCallback(
+    (color: string) => {
+      updateProp({ color });
+      setShowColorPicker(false);
+    },
+    [updateProp],
+  );
+
+  const handleLineHeightChange = useCallback(
+    (value: string) => {
+      if (!selectedBlock) return;
+      const num = parseFloat(value);
+      if (!isNaN(num)) {
+        const oldLH = selectedBlock.lineHeight || 1.2;
+        const scale = num / oldLH;
+        updateProp({ lineHeight: num, height: selectedBlock.height * scale });
+      }
+    },
+    [selectedBlock, updateProp],
+  );
+
+  const handleAddText = useCallback(() => {
+    if (editorMode === 'text') {
+      setEditorMode('select');
+    } else {
+      setEditorMode('text');
+    }
+  }, [editorMode, setEditorMode]);
+
+  // Button base styles
+  const btnBase =
+    'h-7 px-1.5 rounded text-xs transition-colors disabled:opacity-40 disabled:cursor-not-allowed';
+  const btnToggle = (active: boolean) =>
+    active
+      ? `${btnBase} bg-primary text-primary-foreground`
+      : `${btnBase} hover:bg-muted`;
+
+  return (
+    <div className="flex items-center h-9 px-4 border-b border-border bg-background/50 flex-none gap-2 overflow-x-auto">
+      {/* Add Text button */}
+      <button
+        type="button"
+        onClick={handleAddText}
+        className={btnToggle(editorMode === 'text')}
+        title={t('pdfEditor.addTextModeClickOn')}
+      >
+        <span className="flex items-center gap-1">
+          <Plus className="w-3 h-3" />
+          <Type className="w-3 h-3" />
+        </span>
+      </button>
+
+      <div className="w-px h-5 bg-border" />
+
+      {/* Font family */}
+      <select
+        value={selectedBlock?.fontName ?? 'Helvetica'}
+        onChange={(e) => handleFontChange(e.target.value)}
+        disabled={isDisabled}
+        className="h-7 rounded border border-input bg-background px-1.5 text-xs disabled:opacity-40 disabled:cursor-not-allowed min-w-[90px]"
+      >
+        {FONT_OPTIONS.map((f) => (
+          <option key={f.value} value={f.value}>
+            {f.label}
+          </option>
+        ))}
+      </select>
+
+      {/* Font size */}
+      <div className="flex items-center gap-0.5">
+        <button
+          type="button"
+          onClick={() => handleFontSizeChange(-1)}
+          disabled={isDisabled}
+          className={btnBase + ' hover:bg-muted w-6'}
+          title={t('pdfEditor.decreaseFontSize')}
+        >
+          <Minus className="w-3 h-3 mx-auto" />
+        </button>
+        <input
+          type="number"
+          min={6}
+          max={72}
+          value={selectedBlock ? Math.round(selectedBlock.fontSize) : 12}
+          onChange={(e) => handleFontSizeInput(e.target.value)}
+          disabled={isDisabled}
+          className="w-10 h-7 text-center rounded border border-input bg-background text-xs disabled:opacity-40 disabled:cursor-not-allowed [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+        />
+        <button
+          type="button"
+          onClick={() => handleFontSizeChange(1)}
+          disabled={isDisabled}
+          className={btnBase + ' hover:bg-muted w-6'}
+          title={t('pdfEditor.increaseFontSize')}
+        >
+          <Plus className="w-3 h-3 mx-auto" />
+        </button>
+      </div>
+
+      {/* Text color */}
+      <div className="relative">
+        <button
+          type="button"
+          onClick={() => !isDisabled && setShowColorPicker(!showColorPicker)}
+          disabled={isDisabled}
+          className={`${btnBase} hover:bg-muted w-7 flex items-center justify-center`}
+          title={t('pdfEditor.textColor')}
+        >
+          <div className="w-4 h-4 rounded-sm border border-border" style={{
+            backgroundColor: selectedBlock?.color ?? DEFAULT_TEXT_COLOR,
+          }} />
+        </button>
+        {showColorPicker && !isDisabled && (
+          <div className="absolute top-full start-0 mt-1 z-50 rounded-lg border border-border bg-background shadow-lg p-2 min-w-[140px]">
+            <ColorPicker
+              value={selectedBlock?.color ?? DEFAULT_TEXT_COLOR}
+              onChange={handleColorChange}
+            />
+            <span className="mt-2 block text-xs text-muted-foreground font-mono">
+              {selectedBlock?.color ?? DEFAULT_TEXT_COLOR}
+            </span>
+          </div>
+        )}
+      </div>
+
+      <div className="w-px h-5 bg-border" />
+
+      {/* Bold / Italic / Underline */}
+      <button
+        type="button"
+        onClick={() => updateProp({ bold: !selectedBlock?.bold })}
+        disabled={isDisabled}
+        className={btnToggle(selectedBlock?.bold ?? false) + ' w-7 font-bold'}
+        title={t('common.bold')}
+      >
+        <Bold className="w-3.5 h-3.5 mx-auto" />
+      </button>
+      <button
+        type="button"
+        onClick={() => updateProp({ italic: !selectedBlock?.italic })}
+        disabled={isDisabled}
+        className={btnToggle(selectedBlock?.italic ?? false) + ' w-7'}
+        title={t('common.italic')}
+      >
+        <Italic className="w-3.5 h-3.5 mx-auto" />
+      </button>
+      <button
+        type="button"
+        onClick={() => updateProp({ underline: !selectedBlock?.underline })}
+        disabled={isDisabled}
+        className={btnToggle(selectedBlock?.underline ?? false) + ' w-7'}
+        title={t('common.underline')}
+      >
+        <Underline className="w-3.5 h-3.5 mx-auto" />
+      </button>
+
+      <div className="w-px h-5 bg-border" />
+
+      {/* Line spacing */}
+      <div className="flex items-center gap-1">
+        <AlignVerticalSpaceAround className="w-3.5 h-3.5 text-muted-foreground" />
+        <select
+          value={selectedBlock?.lineHeight ?? 1.2}
+          onChange={(e) => handleLineHeightChange(e.target.value)}
+          disabled={isDisabled}
+          className="h-7 rounded border border-input bg-background px-1 text-xs disabled:opacity-40 disabled:cursor-not-allowed min-w-[52px]"
+          title={t('convertDoc.lineSpacing')}
+        >
+          <option value={0.8}>0.8</option>
+          <option value={1.0}>1.0</option>
+          <option value={1.2}>1.2</option>
+          <option value={1.5}>1.5</option>
+          <option value={2.0}>2.0</option>
+        </select>
+      </div>
+
+      {/* Pushed to the end and never disabled: everything to the left acts on the
+          selected text block, search acts on the document. */}
+      <div className="flex-1" />
+      <SearchBar />
+    </div>
+  );
+}
