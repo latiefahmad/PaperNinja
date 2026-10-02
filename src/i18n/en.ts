@@ -631,6 +631,11 @@ export const en = {
   // ── updateChecker ───────────────────────────────────────────────────────
   'updateChecker.dismissUpdateBanner': 'Dismiss update banner',
   'updateChecker.download': 'Download',
+  'updateChecker.downloading': 'Downloading v{version}…',
+  'updateChecker.downloadingProgress': 'Downloading v{version}… {percent}%',
+  'updateChecker.updateReady': 'v{version} is downloaded. Restart PaperNinja to apply it.',
+  'updateChecker.restartNow': 'Restart now',
+  'updateChecker.later': 'Later',
 
   // ── Counts ──────────────────────────────────────────────────────────────────
   // Read through plural(), never t(). The category comes from Intl.PluralRules,

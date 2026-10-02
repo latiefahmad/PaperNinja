@@ -593,6 +593,9 @@ export const nl: Dictionary = {
   'recentDirsButton.recent': 'Recent', 'recentDirsButton.recentFolders': 'Recente mappen',
   'recentDirs.recentFolders': 'Recente mappen', 'splashScreen.paperninjaLogo': 'PaperNinja-logo',
   'updateChecker.dismissUpdateBanner': 'Updatemelding sluiten', 'updateChecker.download': 'Downloaden',
+  'updateChecker.downloading': 'v{version} wordt gedownload…', 'updateChecker.downloadingProgress': 'v{version} wordt gedownload… {percent}%',
+  'updateChecker.updateReady': 'v{version} is gedownload. Herstart PaperNinja om toe te passen.',
+  'updateChecker.restartNow': 'Nu herstarten', 'updateChecker.later': 'Later',
   'themeToggle.system': 'Systeem', 'themeToggle.light': 'Licht',
   'docModel.thisDocumentHasNoExtractable':
     'Dit document bevat geen uitleesbare tekst: het lijkt gescand of alleen uit afbeeldingen te bestaan.',

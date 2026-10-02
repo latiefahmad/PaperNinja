@@ -72,7 +72,11 @@ jobs:
         run: npm ci
 
       - name: Build the installer
-        run: npx tauri build --bundles nsis
+        # Updater signatures are a release concern: the bundler refuses to
+        # create them without TAURI_SIGNING_PRIVATE_KEY, and nothing here is
+        # published, so switch updater artifacts off. release.yml is the only
+        # place that signs.
+        run: npx tauri build --bundles nsis --config '{"bundle":{"createUpdaterArtifacts":false}}'
 
       # Static proof of the console-window fix, so the download is not the only
       # evidence. This cannot see a window flash, but it can see whether the

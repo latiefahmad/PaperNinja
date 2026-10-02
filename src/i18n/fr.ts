@@ -905,6 +905,11 @@ export const fr: Dictionary = {
   'splashScreen.paperninjaLogo': 'Logo PaperNinja',
   'updateChecker.dismissUpdateBanner': 'Masquer le bandeau de mise à jour',
   'updateChecker.download': 'Télécharger',
+  'updateChecker.downloading': 'Téléchargement de la v{version}…',
+  'updateChecker.downloadingProgress': 'Téléchargement de la v{version}… {percent}%',
+  'updateChecker.updateReady': 'La v{version} est téléchargée. Redémarrez PaperNinja pour l’appliquer.',
+  'updateChecker.restartNow': 'Redémarrer maintenant',
+  'updateChecker.later': 'Plus tard',
   'themeToggle.system': 'Système',
   'themeToggle.light': 'Clair',
 

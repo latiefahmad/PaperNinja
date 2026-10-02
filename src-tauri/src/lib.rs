@@ -1952,6 +1952,12 @@ pub fn run_with_file(open_file: Option<String>) {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_http::init())
+        // Updater: checks GitHub Releases for a signed update bundle and
+        // installs it; the frontend drives check/download and asks the user
+        // whether to relaunch now or later (UpdateChecker.tsx). process:
+        // provides relaunch() — a restart is how an installed update applies.
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .invoke_handler({
             // The e2e-only commands are registered in a separate generate_handler!
             // so the release list stays exactly what it was -- a #[cfg] inside the

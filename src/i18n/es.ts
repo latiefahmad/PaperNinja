@@ -711,6 +711,9 @@ export const es: Dictionary = {
   'recentDirsButton.recent': 'Recientes', 'recentDirsButton.recentFolders': 'Carpetas recientes',
   'recentDirs.recentFolders': 'Carpetas recientes', 'splashScreen.paperninjaLogo': 'Logotipo de PaperNinja',
   'updateChecker.dismissUpdateBanner': 'Ocultar el aviso de actualización', 'updateChecker.download': 'Descargar',
+  'updateChecker.downloading': 'Descargando la v{version}…', 'updateChecker.downloadingProgress': 'Descargando la v{version}… {percent}%',
+  'updateChecker.updateReady': 'La v{version} se ha descargado. Reinicia PaperNinja para aplicarla.',
+  'updateChecker.restartNow': 'Reiniciar ahora', 'updateChecker.later': 'Más tarde',
   'themeToggle.system': 'Sistema', 'themeToggle.light': 'Claro',
   'docModel.thisDocumentHasNoExtractable':
     'Este documento no tiene texto extraíble: parece escaneado o compuesto solo de imágenes.',

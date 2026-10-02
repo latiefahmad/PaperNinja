@@ -826,6 +826,11 @@ export const de: Dictionary = {
   'splashScreen.paperninjaLogo': 'PaperNinja-Logo',
   'updateChecker.dismissUpdateBanner': 'Update-Hinweis ausblenden',
   'updateChecker.download': 'Herunterladen',
+  'updateChecker.downloading': 'v{version} wird geladen…',
+  'updateChecker.downloadingProgress': 'v{version} wird geladen… {percent}%',
+  'updateChecker.updateReady': 'v{version} wurde geladen. Starte PaperNinja neu, um sie anzuwenden.',
+  'updateChecker.restartNow': 'Jetzt neu starten',
+  'updateChecker.later': 'Später',
   'landingCard.repairWithRepairPdf': 'Mit „PDF reparieren“ beheben →',
 
   // ── Errors and failure messages ───────────────────────────────────────────

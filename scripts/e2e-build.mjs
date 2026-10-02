@@ -22,7 +22,11 @@ const bundling = process.platform === 'darwin'
   ? ['--bundles', 'app']
   : ['--no-bundle'];
 
-const args = ['tauri', 'build', '--debug', '--features', 'e2e', ...bundling];
+const args = ['tauri', 'build', '--debug', '--features', 'e2e', ...bundling,
+  // Updater signatures are a release concern: the bundler refuses to create
+  // them without TAURI_SIGNING_PRIVATE_KEY, and the e2e app never publishes,
+  // so switch updater artifacts off here rather than require a key locally.
+  '--config', JSON.stringify({ bundle: { createUpdaterArtifacts: false } })];
 console.log(`> npx ${args.join(' ')}`);
 
 const { status } = spawnSync('npx', args, { stdio: 'inherit' });

@@ -44,6 +44,8 @@
     },
     "shell:allow-open",
     "opener:default",
+    "updater:default",
+    "process:allow-restart",
     {
       "identifier": "http:default",
       "allow": [

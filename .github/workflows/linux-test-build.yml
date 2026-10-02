@@ -52,7 +52,9 @@ jobs:
 
       # A release build, not --debug: the point is to test what a user installs.
       - name: Build the .deb
-        run: npx tauri build --bundles deb
+        # Same reason as windows-test-build.yml: no signing key needed for an
+        # installable test artifact.
+        run: npx tauri build --bundles deb --config '{"bundle":{"createUpdaterArtifacts":false}}'
 
       - name: Prove nothing claims a path a system package owns
         run: |

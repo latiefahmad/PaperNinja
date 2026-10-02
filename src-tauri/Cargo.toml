@@ -31,6 +31,13 @@ tauri-plugin-fs = "2"
 tauri-plugin-store = "2"
 tauri-plugin-shell = "2"
 tauri-plugin-http = "2"
+# Versions track the npm packages' major.minor (check-tauri-versions.mjs fails
+# otherwise, and `tauri build` refuses to start). npm pins plugin-updater
+# 2.12.0 and plugin-process 2.3.1, so the crates are pinned to those EXACT
+# versions on purpose: the 2.13 plugin line requires tauri 2.13, which would
+# drag the whole stack forward and break the pairing rule against npm 2.12.
+tauri-plugin-updater = "=2.12.0"
+tauri-plugin-process = "=2.3.1"
 image = "0.25"
 flate2 = "1"
 # qpdf, statically linked. `vendored` builds qpdf, zlib and libjpeg from the

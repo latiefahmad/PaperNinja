@@ -28,9 +28,20 @@
       "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data: asset:; font-src 'self' data:; connect-src ipc: http://ipc.localhost; worker-src 'self' blob:; object-src 'none'; base-uri 'self'"
     }
   },
-  "plugins": {},
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEEyN0Q0RjY2OTZBNUZFMEQKUldRTi9xV1daazk5b3NEek1jcERjT2NLTmxnd0swK0MvVWdBN0V3Uis1MjdLdXRmRmJucnQ4VWIK",
+      "endpoints": [
+        "https://github.com/latiefahmad/PaperNinja/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
+  },
   "bundle": {
     "active": true,
+    "createUpdaterArtifacts": true,
     "targets": [
       "nsis",
       "dmg",

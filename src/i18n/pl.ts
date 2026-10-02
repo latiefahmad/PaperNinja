@@ -595,6 +595,9 @@ export const pl: Dictionary = {
   'recentDirsButton.recent': 'Ostatnie', 'recentDirsButton.recentFolders': 'Ostatnie foldery',
   'recentDirs.recentFolders': 'Ostatnie foldery', 'splashScreen.paperninjaLogo': 'Logo PaperNinja',
   'updateChecker.dismissUpdateBanner': 'Zamknij informację o aktualizacji', 'updateChecker.download': 'Pobierz',
+  'updateChecker.downloading': 'Pobieranie v{version}…', 'updateChecker.downloadingProgress': 'Pobieranie v{version}… {percent}%',
+  'updateChecker.updateReady': 'v{version} została pobrana. Uruchom ponownie PaperNinja, aby ją zastosować.',
+  'updateChecker.restartNow': 'Uruchom ponownie', 'updateChecker.later': 'Później',
   'themeToggle.system': 'System', 'themeToggle.light': 'Jasny',
   'docModel.thisDocumentHasNoExtractable':
     'Ten dokument nie zawiera tekstu możliwego do wyodrębnienia: wygląda na zeskanowany lub złożony wyłącznie z obrazów.',

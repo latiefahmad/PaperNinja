@@ -648,6 +648,9 @@ export const tr: Dictionary = {
   'recentDirsButton.recent': 'Son kullanılanlar', 'recentDirsButton.recentFolders': 'Son kullanılan klasörler',
   'recentDirs.recentFolders': 'Son kullanılan klasörler', 'splashScreen.paperninjaLogo': 'PaperNinja logosu',
   'updateChecker.dismissUpdateBanner': 'Güncelleme bildirimini kapat', 'updateChecker.download': 'İndir',
+  'updateChecker.downloading': 'v{version} indiriliyor…', 'updateChecker.downloadingProgress': 'v{version} indiriliyor… %{percent}',
+  'updateChecker.updateReady': 'v{version} indirildi. Uygulamak için PaperNinja’yı yeniden başlat.',
+  'updateChecker.restartNow': 'Şimdi yeniden başlat', 'updateChecker.later': 'Daha sonra',
   'themeToggle.system': 'Sistem', 'themeToggle.light': 'Açık',
   'docModel.thisDocumentHasNoExtractable':
     'Bu belgede çıkarılabilir metin yok: taranmış veya yalnızca görüntülerden oluşuyor gibi görünüyor.',

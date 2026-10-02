@@ -87,6 +87,20 @@ function finishStagedDmg() {
 
 cleanStaleMounts('pre-build');
 
+// The updater is configured (createUpdaterArtifacts in tauri.conf.json), so the
+// bundler signs the update bundle and refuses to run without the private key.
+// Say so here, in one clear sentence before any minutes-long compile, rather
+// than surfacing a bundler error from inside the build.
+if (!process.env.TAURI_SIGNING_PRIVATE_KEY && !process.env.TAURI_SIGNING_PRIVATE_KEY_PATH) {
+  process.stderr.write(
+    '  TAURI_SIGNING_PRIVATE_KEY is not set; the updater bundle cannot be signed.\n' +
+    '  Export it (path or content) first, e.g.:\n' +
+    '      export TAURI_SIGNING_PRIVATE_KEY_PATH=<path to paperninja-updater.key>\n' +
+    '  Losing this key would mean installed apps can never auto-update again.\n',
+  );
+  process.exit(1);
+}
+
 const extra = process.argv.slice(2);
 const build = sh('npm', ['run', 'tauri', 'build', ...(extra.length ? ['--', ...extra] : [])],
   { stdio: 'inherit' });
