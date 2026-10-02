@@ -65,7 +65,7 @@ optional, only needed for DOC/ODT/RTF and EPUB/MOBI conversion respectively
 
 Yes, it's open source under the MIT license. If it's useful to you, there's
 an optional way to
-[support development](https://buymeacoffee.com/latiefahmad).
+[support development](https://saweria.co/latiefahmad).
 
 ### How do I report a bug or suggest a feature?
 

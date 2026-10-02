@@ -453,7 +453,7 @@ export function Dashboard() {
                 {t('common.yourLocalDocumentToolkitPrivate')}
               </p>
             </div>
-            {/* Theme, About and Buy me a coffee moved to AppChrome, which is on
+            {/* Theme, About and the Saweria button moved to AppChrome, which is on
                 every screen -- reaching them used to mean leaving your tool. */}
             <div className="flex items-center gap-2">
               {/* Recent Folder */}

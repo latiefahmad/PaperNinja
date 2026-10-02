@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * The always-there app chrome: theme, About and Buy me a coffee used to live
+ * The always-there app chrome: theme, About and the Saweria button used to live
  * only on the dashboard, so reaching any of them meant abandoning whatever tool
  * you were in.
  */
@@ -38,12 +38,12 @@ function renderChrome(setup?: (ctx: Ctx) => void) {
 }
 
 describe('AppChrome', () => {
-  it('[AC-01] offers theme, About and Buy me a coffee', () => {
+  it('[AC-01] offers theme, About and Saweria', () => {
     renderChrome();
 
     expect(screen.getByRole('button', { name: /about paperninja/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /theme/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /coffee/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /saweria/i })).toBeInTheDocument();
   });
 
   it('[AC-02] they stay reachable once a tool is open', () => {
@@ -51,7 +51,7 @@ describe('AppChrome', () => {
 
     expect(screen.getByRole('button', { name: /about paperninja/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /theme/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /coffee/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /saweria/i })).toBeInTheDocument();
   });
 
   it('[AC-03] About opens from anywhere, not just the dashboard', () => {

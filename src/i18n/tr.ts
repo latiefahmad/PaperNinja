@@ -612,8 +612,8 @@ export const tr: Dictionary = {
                                                    'aboutDialog.includes': 'İçerir',
                                                    'aboutDialog.thirdPartyNotices': 'Üçüncü taraf bildirimleri',
   'aboutDialog.sendFeedback': 'Geri bildirim gönder',
-  'buyMeAcoffeeButton.buyMeACoffee': 'Bana bir kahve ısmarlayın',
-  'support.buyMeACoffee': 'Bana bir kahve ısmarlayın',
+  'saweriaButton.support': 'Saweria ile destek ol',
+  'support.viaSaweria': 'Saweria ile destek ol',
   'colorPicker.customColour': 'Özel renk',
   'crashReporter.anUnexpectedErrorOccurredYou':
     'Beklenmeyen bir hata oluştu. Düzeltmemize yardımcı olmak için bir hata raporu gönderebilirsiniz.',

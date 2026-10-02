@@ -557,8 +557,8 @@ export const nl: Dictionary = {
                                           'aboutDialog.includes': 'Bevat',
                                           'aboutDialog.thirdPartyNotices': 'Kennisgevingen van derden',
   'aboutDialog.sendFeedback': 'Feedback sturen',
-  'buyMeAcoffeeButton.buyMeACoffee': 'Trakteer me op een koffie',
-  'support.buyMeACoffee': 'Trakteer me op een koffie', 'colorPicker.customColour': 'Eigen kleur',
+  'saweriaButton.support': 'Steun via Saweria',
+  'support.viaSaweria': 'Steun via Saweria', 'colorPicker.customColour': 'Eigen kleur',
   'crashReporter.anUnexpectedErrorOccurredYou':
     'Er is een onverwachte fout opgetreden. U kunt een foutrapport sturen zodat wij het kunnen verhelpen.',
   'crashReporter.sendCrashReport': 'Foutrapport sturen', 'crashReporter.somethingWentWrong': 'Er ging iets mis',

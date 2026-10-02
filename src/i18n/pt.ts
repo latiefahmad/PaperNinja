@@ -559,7 +559,7 @@ export const pt: Dictionary = {
                                          'aboutDialog.includes': 'Inclui',
                                          'aboutDialog.thirdPartyNotices': 'Avisos de terceiros',
   'aboutDialog.sendFeedback': 'Enviar comentários',
-  'buyMeAcoffeeButton.buyMeACoffee': 'Pague-me um café', 'support.buyMeACoffee': 'Pague-me um café',
+  'saweriaButton.support': 'Apoie no Saweria', 'support.viaSaweria': 'Apoie no Saweria',
   'colorPicker.customColour': 'Cor personalizada',
   'crashReporter.anUnexpectedErrorOccurredYou':
     'Ocorreu um erro inesperado. Pode enviar-nos um relatório para nos ajudar a corrigi-lo.',

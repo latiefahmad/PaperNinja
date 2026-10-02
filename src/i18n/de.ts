@@ -559,7 +559,7 @@ export const de: Dictionary = {
   'aboutDialog.thirdPartyNotices': 'Lizenzhinweise Dritter',
   'aboutDialog.sendFeedback': 'Rückmeldung senden',
   'common.yourLocalDocumentToolkitPrivate': 'Ihr lokales Dokumentwerkzeug: privat, schnell, offline.',
-  'buyMeAcoffeeButton.buyMeACoffee': 'Spendieren Sie mir einen Kaffee',
+  'saweriaButton.support': 'Über Saweria unterstützen',
   'colorPicker.customColour': 'Eigene Farbe',
   'crashReporter.anUnexpectedErrorOccurredYou':
     'Es ist ein unerwarteter Fehler aufgetreten. Sie können einen Fehlerbericht senden, damit wir ihn beheben können.',
@@ -821,7 +821,7 @@ export const de: Dictionary = {
   'recentDirsButton.recent': 'Zuletzt',
   'recentDirsButton.recentFolders': 'Zuletzt verwendete Ordner',
   'recentDirs.recentFolders': 'Zuletzt verwendete Ordner',
-  'support.buyMeACoffee': 'Spendieren Sie mir einen Kaffee',
+  'support.viaSaweria': 'Über Saweria unterstützen',
   'privacyFooter.processedLocallyPrivacy': 'Lokal verarbeitet · Datenschutz',
   'splashScreen.paperninjaLogo': 'PaperNinja-Logo',
   'updateChecker.dismissUpdateBanner': 'Update-Hinweis ausblenden',

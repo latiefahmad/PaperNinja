@@ -301,4 +301,4 @@ Contributions are welcome! Please see the [pull request template](.github/pull_r
 
 ---
 
-If PaperNinja saves you time, consider [buying me a coffee](https://buymeacoffee.com/latiefahmad): it helps keep development going.
+If PaperNinja saves you time, consider [supporting me on Saweria](https://saweria.co/latiefahmad): it helps keep development going.

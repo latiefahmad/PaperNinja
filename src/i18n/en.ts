@@ -579,8 +579,8 @@ export const en = {
   'aboutDialog.sendFeedback': 'Send Feedback',
   'common.yourLocalDocumentToolkitPrivate': 'Your local document toolkit: private, fast, offline.',
 
-  // ── buyMeAcoffeeButton ──────────────────────────────────────────────────
-  'buyMeAcoffeeButton.buyMeACoffee': 'Buy me a coffee',
+  // ── saweriaButton ───────────────────────────────────────────────────────
+  'saweriaButton.support': 'Support on Saweria',
 
   // ── colorPicker ─────────────────────────────────────────────────────────
   'colorPicker.customColour': 'Custom colour',
@@ -645,7 +645,7 @@ export const en = {
   'count.redaction_other': '{count} redactions',
 
   // ── support ─────────────────────────────────────────────────────────────
-  'support.buyMeACoffee': 'Buy me a coffee',
+  'support.viaSaweria': 'Support via Saweria',
 
   // ── recentDirs ──────────────────────────────────────────────────────────
   'recentDirs.recentFolders': 'Recent folders',

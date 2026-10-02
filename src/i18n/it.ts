@@ -553,7 +553,7 @@ export const it: Dictionary = {
                                              'aboutDialog.includes': 'Include',
                                              'aboutDialog.thirdPartyNotices': 'Note di terze parti',
   'aboutDialog.sendFeedback': 'Invia un commento',
-  'buyMeAcoffeeButton.buyMeACoffee': 'Mi offra un caffè', 'support.buyMeACoffee': 'Mi offra un caffè',
+  'saweriaButton.support': 'Sostieni su Saweria', 'support.viaSaweria': 'Sostieni su Saweria',
   'colorPicker.customColour': 'Colore personalizzato',
   'crashReporter.anUnexpectedErrorOccurredYou':
     'Si è verificato un errore imprevisto. Può inviare una segnalazione per aiutarci a correggerlo.',

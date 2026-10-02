@@ -857,8 +857,8 @@ export const fr: Dictionary = {
   'aboutDialog.includes': 'Inclut',
   'aboutDialog.thirdPartyNotices': 'Mentions des tiers',
   'aboutDialog.sendFeedback': 'Envoyer un commentaire',
-  'buyMeAcoffeeButton.buyMeACoffee': 'Offrez-moi un café',
-  'support.buyMeACoffee': 'Offrez-moi un café',
+  'saweriaButton.support': 'Soutenir sur Saweria',
+  'support.viaSaweria': 'Soutenir sur Saweria',
   'colorPicker.customColour': 'Couleur personnalisée',
   'crashReporter.anUnexpectedErrorOccurredYou':
     'Une erreur inattendue s’est produite. Vous pouvez envoyer un rapport pour nous aider à la corriger.',

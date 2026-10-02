@@ -1,6 +1,7 @@
 // AppChrome: the strip that is present on every screen.
 //
-// Theme, About and Buy me a coffee used to live only on the dashboard, so
+// Theme, About and the Saweria support button used to live only on the
+// dashboard, so
 // reaching any of them meant abandoning whatever tool you were in. They belong
 // to the app, not to one screen, so they sit here -- rendered once, above
 // everything, opposite the window controls.
@@ -8,7 +9,7 @@ import { useCallback, useState } from 'react';
 import { FolderOpen, Info } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { AboutDialog } from '@/components/AboutDialog';
-import { BuyMeACoffeeButton } from '@/components/BuyMeACoffeeButton';
+import { SaweriaButton } from '@/components/SaweriaButton';
 import { LanguagePicker } from '@/components/LanguagePicker';
 import { NinjaMark } from '@/components/brand/NinjaMark';
 import { useToolContext } from '@/context/ToolContext';
@@ -90,7 +91,7 @@ export function AppChrome() {
           <Info className="h-4 w-4" />
         </button>
         <LanguagePicker />
-        <BuyMeACoffeeButton />
+        <SaweriaButton />
         <ThemeToggle />
         </div>
         <span aria-hidden="true" />
