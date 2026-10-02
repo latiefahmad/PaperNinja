@@ -2,6 +2,27 @@
 
 Grouped by what someone using PaperNinja would notice, not by commit.
 
+## v1.0.2-beta.1
+
+A dress-rehearsal beta: the first release built by the pipeline since 1.0.1,
+and the first carried by signed updater artifacts end to end. Three commits
+since v1.0.1.
+
+### New
+
+- **PaperNinja can now update itself.** When a new release appears on GitHub,
+  the app downloads it in the background while you keep working, shows the
+  download progress, and then asks whether to restart now or later. Choosing
+  later is remembered for that version, and the check runs again every six
+  hours. Updates are cryptographically signed; if the update feed is not
+  reachable the app falls back to pointing at the release page, as before.
+
+### Changed
+
+- **Support links point to Saweria** ([saweria.co/latiefahmad](https://saweria.co/latiefahmad))
+  instead of Buy me a coffee — in the app's support button, the About dialog,
+  the landing page, the README and the repository funding file.
+
 ## v1.0.0
 
 The first stable release. Since `v1.0.0-beta.9`, 243 commits.

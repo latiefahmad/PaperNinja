@@ -7,9 +7,16 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Release version, without the v prefix (e.g. 1.0.2)'
+        description: 'Release version, without the v prefix (e.g. 1.0.2, or 1.0.2-beta.1 for the beta dress rehearsal)'
         required: true
         type: string
+
+# Two runs racing at the same version would both upload to the same draft
+# release and both try to publish it. Queue instead of cancel: a release run
+# that was killed mid-publish is worse than a late one.
+concurrency:
+  group: release-${{ inputs.version || github.ref }}
+  cancel-in-progress: false
 
 permissions:
   contents: write
@@ -77,6 +84,16 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
+      # A manual run names the release whatever version it was dispatched with,
+      # but the checkout carries the repo's current version -- and without the
+      # rewrite below, this very check would compare the dispatched version
+      # against source files that still say 1.0.1 and fail the run minutes in.
+      # Rewriting the six version files makes a dispatch run take the exact
+      # same path as a tag release, which is the point of the dress rehearsal.
+      - name: Point the source tree at the dispatched version
+        if: github.event_name == 'workflow_dispatch'
+        run: node scripts/set-version.mjs "${{ needs.prepare.outputs.version }}"
+
       - name: Version consistency check (tag vs source)
         run: npm run version:check
         env:
@@ -140,6 +157,15 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
+      # test-gate rewrote the version files and verified them, but this job
+      # checks the tree out again -- without repeating the rewrite, Tauri
+      # builds the repo's baked-in version and the draft release ends up with
+      # PaperNinja_<repo version>_* assets while the smoke-test job hunts for
+      # PaperNinja_<dispatched version>_* files that were never built.
+      - name: Point the source tree at the dispatched version
+        if: github.event_name == 'workflow_dispatch'
+        run: node scripts/set-version.mjs "${{ needs.prepare.outputs.version }}"
+
       # Tauri's bundler downloads the AppImage launcher (AppRun) into its tool
       # cache and marks it 0770: no execute bit for "others". It then copies it
       # into the AppImage as AppRun.wrapped with those bits intact. Launched by
@@ -166,7 +192,19 @@ jobs:
         uses: tauri-apps/tauri-action@1deb371b0cd8bd54025b384f1cd735e725c4060f # v1.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # The updater verifies a signature on every update it installs, so
+          # the bundler signs the artifacts and refuses to run without this
+          # key. Missing secrets fail the build here rather than shipping an
+          # update users' apps would refuse to install.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
+          # Updater plumbing: tauri-action writes latest.json from the signed
+          # artifacts and uploads it with the .sig files — that JSON is what
+          # the endpoint in tauri.conf.json serves. NSIS preferred over WiX:
+          # only NSIS is built, but the default could flip underneath us.
+          uploadUpdaterJson: true
+          updaterJsonPreferNsis: true
           tagName: ${{ needs.prepare.outputs.tag }}
           releaseName: 'PaperNinja ${{ needs.prepare.outputs.tag }}'
           releaseBody: |
@@ -176,11 +214,11 @@ jobs:
 
             | Platform | Installer | Download |
             |----------|-----------|----------|
-            | **Mac (M1/M2/M3/M4)** | .dmg | [Download](https://github.com/shyhunter/PaperNinja/releases/download/${{ needs.prepare.outputs.tag }}/PaperNinja_${{ needs.prepare.outputs.version }}_aarch64.dmg) |
-            | **Mac (Intel)** | .dmg | [Download](https://github.com/shyhunter/PaperNinja/releases/download/${{ needs.prepare.outputs.tag }}/PaperNinja_${{ needs.prepare.outputs.version }}_x64.dmg) |
-            | **Windows** | .exe | [Download](https://github.com/shyhunter/PaperNinja/releases/download/${{ needs.prepare.outputs.tag }}/PaperNinja_${{ needs.prepare.outputs.version }}_x64-setup.exe) |
-            | **Linux (AppImage)** | .AppImage | [Download](https://github.com/shyhunter/PaperNinja/releases/download/${{ needs.prepare.outputs.tag }}/PaperNinja_${{ needs.prepare.outputs.version }}_amd64.AppImage) |
-            | **Linux (Debian/Ubuntu)** | .deb | [Download](https://github.com/shyhunter/PaperNinja/releases/download/${{ needs.prepare.outputs.tag }}/PaperNinja_${{ needs.prepare.outputs.version }}_amd64.deb) |
+            | **Mac (M1/M2/M3/M4)** | .dmg | [Download](https://github.com/${{ github.repository }}/releases/download/${{ needs.prepare.outputs.tag }}/PaperNinja_${{ needs.prepare.outputs.version }}_aarch64.dmg) |
+            | **Mac (Intel)** | .dmg | [Download](https://github.com/${{ github.repository }}/releases/download/${{ needs.prepare.outputs.tag }}/PaperNinja_${{ needs.prepare.outputs.version }}_x64.dmg) |
+            | **Windows** | .exe | [Download](https://github.com/${{ github.repository }}/releases/download/${{ needs.prepare.outputs.tag }}/PaperNinja_${{ needs.prepare.outputs.version }}_x64-setup.exe) |
+            | **Linux (AppImage)** | .AppImage | [Download](https://github.com/${{ github.repository }}/releases/download/${{ needs.prepare.outputs.tag }}/PaperNinja_${{ needs.prepare.outputs.version }}_amd64.AppImage) |
+            | **Linux (Debian/Ubuntu)** | .deb | [Download](https://github.com/${{ github.repository }}/releases/download/${{ needs.prepare.outputs.tag }}/PaperNinja_${{ needs.prepare.outputs.version }}_amd64.deb) |
 
             Everything you need is included: just install and go.
 
@@ -234,7 +272,7 @@ jobs:
             <details>
             <summary>What are the Assets below?</summary>
 
-            The **Assets** section below is GitHub's automatic list of the same installer files from the table above. You don't need to use it: the download links in the table are the same files. The `Source code` entries are the raw project code and are only useful for developers.
+            The **Assets** section below is GitHub's automatic list of the same installer files from the table above. You don't need to use it: the download links in the table are the same files. The `Source code` entries are the raw project code and are only useful for developers. A few other files (`.sig`, `.app.tar.gz`, `latest.json`) belong to PaperNinja's built-in updater, not to you — the app uses them by itself to install updates.
             </details>
           releaseDraft: true
           prerelease: ${{ needs.prepare.outputs.is_prerelease }}
@@ -472,6 +510,7 @@ jobs:
     env:
       RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
       RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
+      IS_PRERELEASE: ${{ needs.prepare.outputs.is_prerelease }}
 
     steps:
       - name: Checkout
@@ -513,14 +552,21 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # What changed, above the install table. Written per release in
-      # docs/release-notes/<tag>.md. Required: a release without notes keeps
-      # users guessing what changed, so this fails the publish instead of
-      # shipping install notes alone.
+      # docs/release-notes/<tag>.md. Required for stable releases: a release
+      # without notes keeps users guessing what changed, so this fails the
+      # publish instead of shipping install notes alone. Prereleases are
+      # exempt: they exist to exercise the pipeline and hand testers an
+      # installer, and demanding full notes would stop the beta dress
+      # rehearsal short of the finish line.
       - name: Add "What's new" to the release notes
         run: |
           set -euo pipefail
           NOTES="docs/release-notes/${RELEASE_TAG}.md"
           if [ ! -f "$NOTES" ]; then
+            if [ "$IS_PRERELEASE" = "true" ]; then
+              echo "no docs/release-notes/${RELEASE_TAG}.md — prerelease: publishing with the install table alone"
+              exit 0
+            fi
             echo "FAIL: no $NOTES — write the release notes first, then re-run"
             exit 1
           fi
